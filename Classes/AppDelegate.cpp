@@ -23,7 +23,8 @@
  ****************************************************************************/
 
 #include "AppDelegate.h"
-#include "HelloWorldScene.h"
+#include "MenuScene.h"
+#include "music.h"
 
 // #define USE_AUDIO_ENGINE 1
 
@@ -31,10 +32,24 @@
 #include "audio/include/AudioEngine.h"
 using namespace cocos2d::experimental;
 #endif
-
+//#define DEBUG_MODE 1
+#ifdef _WIN32 
+#include <windows.h>
+#include <iostream>
+void createConsole() {
+    AllocConsole(); // ��������̨����
+    FILE* stream;
+    freopen_s(&stream, "CONOUT$", "w", stdout); // ����׼����ض��򵽿���̨
+    freopen_s(&stream, "CONOUT$", "w", stderr); // ����׼�����ض��򵽿���̨
+    std::cout.clear();
+    std::clog.clear();
+    std::cerr.clear();
+}
+#endif
 USING_NS_CC;
-
-static cocos2d::Size designResolutionSize = cocos2d::Size(480, 320);
+extern Music a;
+//�ֱ��ʴ�С
+static cocos2d::Size designResolutionSize = cocos2d::Size(960, 640);
 static cocos2d::Size smallResolutionSize = cocos2d::Size(480, 320);
 static cocos2d::Size mediumResolutionSize = cocos2d::Size(1024, 768);
 static cocos2d::Size largeResolutionSize = cocos2d::Size(2048, 1536);
@@ -106,13 +121,20 @@ bool AppDelegate::applicationDidFinishLaunching() {
     }
 
     register_all_packages();
+   
+    //��Ԥ����
+    a.preloadSoundEffect("Music/bgm.mp3");
+    //����ģʽ
+#ifdef DEBUG_MODE
+    createConsole();
+#endif 
 
     // create a scene. it's an autorelease object
-    auto scene = HelloWorld::createScene();
-
+    auto scene = MenuScene::createScene();
     // run
     director->runWithScene(scene);
-
+    //�ڲ���
+    a.background_music();
     return true;
 }
 

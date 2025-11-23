@@ -58,10 +58,40 @@ endif()
 list(APPEND GAME_SOURCE
      Classes/AppDelegate.cpp
      Classes/HelloWorldScene.cpp
+     # 添加所有 .cpp 文件
+     Classes/advantureScene.cpp
+     Classes/BaseLevelScene.cpp
+     Classes/Carrot.cpp
+     Classes/GameManager.cpp
+     Classes/menuScene.cpp
+     Classes/Monster.cpp
+     Classes/MonsterConfigs.cpp
+     Classes/music.cpp
+     Classes/Obstacle.cpp
+     Classes/seeScene.cpp
+     Classes/setScene.cpp
+     Classes/themeScene.cpp
+     Classes/Tower.cpp
      )
+
 list(APPEND GAME_HEADER
      Classes/AppDelegate.h
      Classes/HelloWorldScene.h
+     # 添加所有 .h 文件
+     Classes/advantureScene.h
+     Classes/BaseLevelScene.h
+     Classes/Carrot.h
+     Classes/GameManager.h
+     Classes/menuScene.h
+     Classes/Monster.h
+     Classes/MonsterConfigs.h
+     Classes/music.h
+     Classes/obpos.h
+     Classes/Obstacle.h
+     Classes/seeScene.h
+     Classes/setScene.h
+     Classes/themeScene.h
+     Classes/Tower.h
      )
 
 if(ANDROID)
