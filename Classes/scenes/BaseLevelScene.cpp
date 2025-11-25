@@ -14,6 +14,11 @@
 #include"obpos.h"
 #include "json/stringbuffer.h"
 #include<fstream>
+#include "core/EventBusProvider.h"
+#include "core/state/GameState.h"
+#include "core/state/PausedState.h"
+#include "gameplay/events/MoneyEvents.h"
+#include "ui/widgets/MoneyHud.h"
 using namespace rapidjson;
 using namespace ui;
 //#define DEBUG_MODE
@@ -43,10 +48,14 @@ static void problemLoading(const char* filename)
 /****************��ǩ����******************/
 //���½�ұ�ǩ
 void BaseLevelScene::updateMoney(int add) {
+    // Adjust internal bookkeeping first; MoneyHud 订阅事件后刷新 UI
     money += add;
-    std::string text = std::to_string(money); // ������ת��Ϊ�ַ���
-    moneyLable->setString(text);
+    carrot::gameplay::events::MoneyChangedEvent evt{};
+    evt.delta = add;
+    evt.current = money;
+    carrot::core::EventBusProvider::Get()->Publish(carrot::gameplay::events::kMoneyChangedEventId, evt);
 }
+
 //���µ�ǰ������ǩ
 void BaseLevelScene::updateCurrentWaveLabe() {
     _curNumberLabel->setString(StringUtils::format("%d", std::min(manager->getCurrentWaveNum() + 1, manager->getAllWaveNum())));
@@ -76,28 +85,33 @@ void BaseLevelScene::doublespeed(Ref* pSender) {
 }
 //��ͣ��ť
 void BaseLevelScene::pause_all(Ref* pSender) {
-    isPaused = !isPaused; // �л���ͣ״̬
+    if (!gameStateContext) {
+        gameStateContext = std::make_shared<carrot::core::state::GameStateContext>();
+    }
+    if (!pausedState) {
+        pausedState = std::make_shared<carrot::core::state::PausedState>();
+    }
+
+    isGamePaused = !isGamePaused; // Switch pause state
     a.button_music();
     MenuItemImage* button = static_cast<MenuItemImage*>(pSender);
-    if (isPaused) {//��ͣ״̬
+    if (isGamePaused) {
         button->setNormalImage(Sprite::create("CarrotGuardRes/UI/continueButton.png"));
         button->setSelectedImage(Sprite::create("CarrotGuardRes/UI/continueButton.png"));
-        // ���Ӷ�����ͣ��ʶ
         auto pauseTop = Sprite::create("CarrotGuardRes/UI/pausing.png");
         pauseTop->setName("pauseTop");
         pauseTop->setPosition(464, 610);
         pauseTop->setScale(2.0f);
         this->addChild(pauseTop, 10);
-        Director::getInstance()->pause();
-    }
-    else {//�ָ�
+        gameStateContext->SetState(pausedState);
+    } else {
         button->setNormalImage(Sprite::create("CarrotGuardRes/UI/pauseButton.png"));
         button->setSelectedImage(Sprite::create("CarrotGuardRes/UI/pauseButton.png"));
-        //�Ƴ���ͣ��ʶ
         this->removeChildByName("pauseTop");
-        Director::getInstance()->resume();
+        gameStateContext->SetState(nullptr);
     }
 }
+
 void BaseLevelScene::wenhao(Ref* pSender) {
     a.button_music();
     auto visibleSize = Director::getInstance()->getVisibleSize();//�ֱ��ʴ�С
@@ -223,7 +237,7 @@ void BaseLevelScene::menu_all(Ref* pSender) {
         a.button_music();
         this->removeChild(menuLayer);
         // �ж��ڵ���˵���ť֮ǰ�Ƿ�������ͣ��ť����ֹ����bug
-        if (isPaused == 0) {
+        if (!isGamePaused) {
             Director::getInstance()->resume();
         }
         });
@@ -566,9 +580,11 @@ void BaseLevelScene::initUI()
     _numberLabel->setPosition(960 * 0.50, 640 * 0.95);
     this->addChild(_numberLabel, 2);
     //��money
-    moneyLable = Label::createWithTTF("1000", "fonts/arial.ttf", 27);
-    moneyLable->setPosition(Vec2(160, 610));
-    this->addChild(moneyLable, 3);
+    moneyHud = carrot::ui::widgets::MoneyHud::create(money);
+    if (moneyHud) {
+        moneyHud->setPosition(Vec2(160, 610));
+        this->addChild(moneyHud, 3);
+    }
     //���ӷ��ذ�ť
     auto menu = Menu::create();
     menu->setPosition(Vec2::ZERO);

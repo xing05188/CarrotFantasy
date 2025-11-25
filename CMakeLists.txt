@@ -56,42 +56,49 @@ endif()
 
 # add cross-platforms source files and header files 
 list(APPEND GAME_SOURCE
-     Classes/AppDelegate.cpp
-     Classes/HelloWorldScene.cpp
+     Classes/core/AppDelegate.cpp
+     Classes/scenes/HelloWorldScene.cpp
      # 添加所有 .cpp 文件
-     Classes/advantureScene.cpp
-     Classes/BaseLevelScene.cpp
-     Classes/Carrot.cpp
-     Classes/GameManager.cpp
-     Classes/menuScene.cpp
-     Classes/Monster.cpp
-     Classes/MonsterConfigs.cpp
-     Classes/music.cpp
-     Classes/Obstacle.cpp
-     Classes/seeScene.cpp
-     Classes/setScene.cpp
-     Classes/themeScene.cpp
-     Classes/Tower.cpp
+     Classes/scenes/advantureScene.cpp
+     Classes/scenes/BaseLevelScene.cpp
+     Classes/entities/Carrot.cpp
+     Classes/core/GameManager.cpp
+     Classes/scenes/menuScene.cpp
+     Classes/entities/Monster.cpp
+     Classes/config/MonsterConfigs.cpp
+     Classes/audio/music.cpp
+     Classes/entities/Obstacle.cpp
+     Classes/scenes/seeScene.cpp
+     Classes/scenes/setScene.cpp
+     Classes/scenes/themeScene.cpp
+     Classes/entities/Tower.cpp
+     Classes/ui/widgets/MoneyHud.cpp
+     Classes/core/state/GameState.cpp
+     Classes/core/state/PausedState.cpp
      )
 
 list(APPEND GAME_HEADER
-     Classes/AppDelegate.h
-     Classes/HelloWorldScene.h
+     Classes/core/AppDelegate.h
+     Classes/scenes/HelloWorldScene.h
      # 添加所有 .h 文件
-     Classes/advantureScene.h
-     Classes/BaseLevelScene.h
-     Classes/Carrot.h
-     Classes/GameManager.h
-     Classes/menuScene.h
-     Classes/Monster.h
-     Classes/MonsterConfigs.h
-     Classes/music.h
-     Classes/obpos.h
-     Classes/Obstacle.h
-     Classes/seeScene.h
-     Classes/setScene.h
-     Classes/themeScene.h
-     Classes/Tower.h
+     Classes/scenes/advantureScene.h
+     Classes/scenes/BaseLevelScene.h
+     Classes/entities/Carrot.h
+     Classes/core/GameManager.h
+     Classes/scenes/menuScene.h
+     Classes/entities/Monster.h
+     Classes/config/MonsterConfigs.h
+     Classes/audio/music.h
+     Classes/config/obpos.h
+     Classes/entities/Obstacle.h
+     Classes/scenes/seeScene.h
+     Classes/scenes/setScene.h
+     Classes/scenes/themeScene.h
+     Classes/entities/Tower.h
+     Classes/ui/widgets/MoneyHud.h
+     Classes/core/state/GameState.h
+     Classes/core/state/PausedState.h
+     Classes/gameplay/events/CarrotEvents.h
      )
 
 if(ANDROID)
@@ -162,6 +169,12 @@ endif()
 target_link_libraries(${APP_NAME} cocos2d)
 target_include_directories(${APP_NAME}
         PRIVATE Classes
+        PRIVATE Classes/core
+        PRIVATE Classes/scenes
+        PRIVATE Classes/entities
+        PRIVATE Classes/ui
+        PRIVATE Classes/config
+        PRIVATE Classes/audio
         PRIVATE ${COCOS2DX_ROOT_PATH}/cocos/audio/include/
 )
 

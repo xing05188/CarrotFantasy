@@ -643,7 +643,10 @@ void GameManager::saveMonstersDataToJson(const std::string& fileName) {
 /*****************�ܲ����**********************/
 //�ܲ�������Ч
 void GameManager::doudong() {
-    if (carrot->hp == 10) {
+    if (!carrot) {
+        return;
+    }
+    if (carrot->getHP() == carrot->getMaxHP()) {
         carrot->setVisible(false);
         auto b = cocos2d::Sprite::create();
         if (!b) {
