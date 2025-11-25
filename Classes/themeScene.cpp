@@ -9,7 +9,6 @@
 #include "json/stringbuffer.h"
 #include<fstream>
 using namespace rapidjson;
-extern Music a;
 extern bool level_is_win[3];//1ͨ���˽�����2��
 extern bool isNewGame[3];
 extern float beishu;
@@ -177,7 +176,7 @@ bool themescene::init() {
 		if (type == Widget::TouchEventType::BEGAN)
 			clearRelatedButtons();
 		if (type == Widget::TouchEventType::ENDED) {
-			a.button_music();
+			Music::getInstance()->button_music();
 			PageView* pageView = dynamic_cast<PageView*>(pSender);
 			clearRelatedButtons();
 			int currentIndex = pageView->getCurrentPageIndex();
@@ -188,7 +187,7 @@ bool themescene::init() {
 				confirmButton->setPosition(Vec2(screenSize.width * 0.6, screenSize.height * 0.13));
 				confirmButton->addTouchEventListener([=](Ref* pSender, Widget::TouchEventType type) {
 					if (type == Widget::TouchEventType::ENDED) {
-						a.button_music();
+						Music::getInstance()->button_music();
 						
 						isNewGame[currentIndex] = false;
 						auto scene = BaseLevelScene::createScene(currentIndex + 1);
@@ -207,7 +206,7 @@ bool themescene::init() {
 				cancelButton->setPosition(Vec2(screenSize.width * 0.4, screenSize.height * 0.13));  // ����λ��
 				cancelButton->addTouchEventListener([=](Ref* pSender, Widget::TouchEventType type) {
 					if (type == Widget::TouchEventType::ENDED) {
-						a.button_music();
+						Music::getInstance()->button_music();
 
 						isNewGame[currentIndex] = true;
 						// �������л�����һ��
@@ -270,7 +269,7 @@ bool themescene::init() {
 	leftButton->setPosition(Vec2(screenSize.width * 0.1, screenSize.height / 2));
 	leftButton->addTouchEventListener([=](Ref* pSender, Widget::TouchEventType type) {
 		if (type == Widget::TouchEventType::ENDED) {
-			a.button_music();
+			Music::getInstance()->button_music();
 			int currentIndex = pageView->getCurrentPageIndex();
 			if (currentIndex > 0) {
 				pageView->scrollToPage(currentIndex - 1);
@@ -286,7 +285,7 @@ bool themescene::init() {
 	rightButton->setPosition(Vec2(screenSize.width * 0.9, screenSize.height / 2));
 	rightButton->addTouchEventListener([=](Ref* pSender, Widget::TouchEventType type) {
 		if (type == Widget::TouchEventType::ENDED) {
-			a.button_music();
+			Music::getInstance()->button_music();
 			int currentIndex = pageView->getCurrentPageIndex();
 			if (currentIndex < 0)
 				currentIndex = 0;  //  δ֪ԭ���¿�ʼ��ʱ��index��-1����ʱ������������
@@ -301,7 +300,7 @@ bool themescene::init() {
 }
 
 void themescene::to_advantureScene(Ref* pSender) {
-	a.button_music();
+	Music::getInstance()->button_music();
 	Director::getInstance()->popScene();
 }
 

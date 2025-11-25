@@ -9,7 +9,6 @@
 #include"Music.h"
 
 USING_NS_CC;
-extern Music a;
 extern int DeadCount;
 
 /*****************GameManager���**********************/
@@ -315,7 +314,7 @@ void GameManager::loadMonsterResources() {
 }
 //����������������
 void GameManager::produceMonsters(const std::string monsterName, const int startIndex, int health, bool pause) {
-    a.born_music();
+    Music::getInstance()->born_music();
     if (startIndex == 0)
         playSpawnEffect(screenPath[0]);
     // �������ﲢ���ӵ�����
@@ -676,7 +675,7 @@ void GameManager::doudong() {
             CCLOG("Death animation completed, removing death sprite.");
             b->removeFromParent();
             });
-        a.tuSound();
+        Music::getInstance()->tuSound();
         b->runAction(cocos2d::Sequence::create(animate, onDeathComplete, nullptr));
         carrot->setVisible(true);
     }

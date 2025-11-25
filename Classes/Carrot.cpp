@@ -2,7 +2,6 @@
 #include"Music.h"
 #define schedule_selector(_SELECTOR) static_cast<SEL_SCHEDULE>(&_SELECTOR)
 USING_NS_CC;
-extern Music a;
 Carrot* Carrot::create(int initialHP, const cocos2d::Vec2& carrotPos, const cocos2d::Vec2& hpPos) {
     Carrot* ret = new (std::nothrow) Carrot();
     if (ret && ret->init(initialHP, carrotPos, hpPos)) {
@@ -66,7 +65,7 @@ void Carrot::updateHPDisplay() {
 void Carrot::getDamage(int damage) {
     if(hp<=0)
         return;
-    a.carrotSound();
+    Music::getInstance()->carrotSound();
     changeHP(0-damage);
     CCLOG("getDamage...");
 }

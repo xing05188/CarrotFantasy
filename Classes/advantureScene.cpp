@@ -6,7 +6,6 @@
 bool level_is_win[3] = { false };
 bool isNewGame[3] = { true,true,true };
 float beishu=1.0f;
-extern Music a;
 USING_NS_CC;
 using namespace ui;
 
@@ -106,7 +105,7 @@ bool advanturescene::init() {
 	// ���Ӵ����¼�������
 	pageView->addTouchEventListener([=](Ref* pSender, Widget::TouchEventType type) {
 		if (type == Widget::TouchEventType::ENDED) {
-			a.button_music();
+			Music::getInstance()->button_music();
 			PageView* pageView = dynamic_cast<PageView*>(pSender);
 			int currentIndex = pageView->getCurrentPageIndex();
 			Scene* themeScene;
@@ -170,7 +169,7 @@ bool advanturescene::init() {
 	leftButton->setPosition(Vec2(screenSize.width * 0.1, screenSize.height / 2));
 	leftButton->addTouchEventListener([=](Ref* pSender, Widget::TouchEventType type) {
 		if (type == Widget::TouchEventType::ENDED) {
-			a.button_music();
+			Music::getInstance()->button_music();
 			int currentIndex = pageView->getCurrentPageIndex();
 			CCLOG("currentIndex:  %d", currentIndex);
 			if (currentIndex > 0) 
@@ -184,7 +183,7 @@ bool advanturescene::init() {
 	rightButton->setPosition(Vec2(screenSize.width * 0.9, screenSize.height / 2));
 	rightButton->addTouchEventListener([=](Ref* pSender, Widget::TouchEventType type) {
 		if (type == Widget::TouchEventType::ENDED) {
-			a.button_music();
+			Music::getInstance()->button_music();
 			int currentIndex = pageView->getCurrentPageIndex();
 			if (currentIndex < 0)
 				currentIndex = 0;  
@@ -199,7 +198,7 @@ bool advanturescene::init() {
 }
 
 void advanturescene::to_menuScene(Ref* pSender) {
-	a.button_music();
+	Music::getInstance()->button_music();
 	Director::getInstance()->popScene();
 }
 

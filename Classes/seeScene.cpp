@@ -1,7 +1,6 @@
 #include"menuScene.h"
 #include"seeScene.h"
 #include"music.h"
-extern Music a;
 USING_NS_CC;
 using namespace ui;
 
@@ -56,7 +55,7 @@ bool seescene::init() {
 }
 
 void seescene::to_menuScene(Ref* pSender) {
-	a.button_music();
+	Music::getInstance()->button_music();
 	Director::getInstance()->popScene();
 }
 

@@ -1,7 +1,6 @@
 #include"menuScene.h"
 #include"setScene.h"
 #include"music.h"
-extern Music a;
 USING_NS_CC;
 using namespace ui;
 static void problemLoading(const char* filename)
@@ -68,7 +67,7 @@ bool setscene::init() {
 		playMusicButton->setPosition(Vec2(visibleSize.width * 0.5, visibleSize.height * 0.64));
 		playMusicButton->setScale(1.7f * scaleX);
 		menu->addChild(playMusicButton);
-		if (a.is_play()) {
+		if (Music::getInstance()->is_play()) {
 			playMusicButton->setNormalImage(Sprite::create("CarrotGuardRes/UI/MusicOn.png"));
 			playMusicButton->setSelectedImage(Sprite::create("CarrotGuardRes/UI/MusicOn.png"));
 		}
@@ -79,9 +78,9 @@ bool setscene::init() {
 	}
 
 	// ����������Ϣ
-	auto authorLabel_1 = Label::createWithSystemFont(StringUtils::format("Developers: zhou,yu,guan"), "Arial", 27);
-	auto authorLabel_2 = Label::createWithSystemFont(StringUtils::format("Development time: 2024/11/26"), "Arial", 27);
-	auto authorLabel_3 = Label::createWithSystemFont(StringUtils::format("Fuck you"), "Arial", 27);
+	auto authorLabel_1 = Label::createWithSystemFont(StringUtils::format("Developers: zhou,yu,guan,zheng,yuan"), "Arial", 27);
+	auto authorLabel_2 = Label::createWithSystemFont(StringUtils::format("Development time: 2025/11/25"), "Arial", 27);
+	auto authorLabel_3 = Label::createWithSystemFont(StringUtils::format("Thank you"), "Arial", 27);
 	authorLabel_1->setPosition(Vec2(visibleSize.width * 0.5, visibleSize.height * 0.4));
 	authorLabel_2->setPosition(Vec2(visibleSize.width * 0.5, visibleSize.height * 0.3));
 	authorLabel_3->setPosition(Vec2(visibleSize.width * 0.5, visibleSize.height * 0.5));
@@ -96,25 +95,25 @@ bool setscene::init() {
 }
 // a selector callback
 void setscene::to_menuScene(Ref* pSender) {
-	a.button_music();
+	Music::getInstance()->button_music();
 	Director::getInstance()->popScene();
 }
 void setscene::paly_music(Ref* pSender) {
-	a.button_music();
+	Music::getInstance()->button_music();
 	MenuItemImage* button = static_cast<MenuItemImage*>(pSender);
 	//��֮ǰû����Ч
-	if (!a.is_play()) {
+	if (!Music::getInstance()->is_play()) {
 		button->setNormalImage(Sprite::create("CarrotGuardRes/UI/soundOn.png"));
 		button->setSelectedImage(Sprite::create("CarrotGuardRes/UI/soundOn.png"));
-		a.set_music(1);
-		a.background_music();
+		Music::getInstance()->set_music(1);
+		Music::getInstance()->background_music();
 	}
 	//��֮ǰ������Ч
 	else {
 		button->setNormalImage(Sprite::create("CarrotGuardRes/UI/soundClose.png"));
 		button->setSelectedImage(Sprite::create("CarrotGuardRes/UI/soundClose.png"));
-		a.set_music(0);
-		a.background_music();
+		Music::getInstance()->set_music(0);
+		Music::getInstance()->background_music();
 	}
 
 }
