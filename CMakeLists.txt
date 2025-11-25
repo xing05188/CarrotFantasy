@@ -75,6 +75,10 @@ list(APPEND GAME_SOURCE
      Classes/ui/widgets/MoneyHud.cpp
      Classes/core/state/GameState.cpp
      Classes/core/state/PausedState.cpp
+     Classes/core/state/MenuState.cpp
+     Classes/core/state/LevelSelectState.cpp
+     Classes/core/state/LoadingState.cpp
+     Classes/core/state/LevelState.cpp
      )
 
 list(APPEND GAME_HEADER
@@ -98,6 +102,11 @@ list(APPEND GAME_HEADER
      Classes/ui/widgets/MoneyHud.h
      Classes/core/state/GameState.h
      Classes/core/state/PausedState.h
+     Classes/core/state/MenuState.h
+     Classes/core/state/LevelSelectState.h
+     Classes/core/state/LoadingState.h
+     Classes/core/state/LevelState.h
+     Classes/core/state/GameStateProvider.h
      Classes/gameplay/events/CarrotEvents.h
      )
 

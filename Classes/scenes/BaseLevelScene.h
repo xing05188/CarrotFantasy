@@ -11,6 +11,8 @@
 #include"Obstacle.h"
 #include"core/state/GameState.h"
 #include"core/state/PausedState.h"
+#include"core/state/MenuState.h"
+#include"core/state/LevelSelectState.h"
 
 USING_NS_CC;
 
@@ -116,6 +118,8 @@ public:
 
     void saveGameState();                                        //ͨ������浵
     Monster* IsTargetMonster(const Vec2& pos);                   //����Ƿ��й��ﱻ����
+    void transitionToMenuState();
+    void transitionToLevelSelectState();
    
 };
 #endif 

@@ -3,6 +3,8 @@
 #include"music.h"
 #include "ui/CocosGUI.h"
 #include"BaseLevelScene.h"
+#include "core/state/GameStateProvider.h"
+#include "core/state/LoadingState.h"
 #include "json/document.h"
 #include "json/rapidjson.h"
 #include "json/writer.h"
@@ -190,8 +192,8 @@ bool themescene::init() {
 						Music::getInstance()->button_music();
 						
 						isNewGame[currentIndex] = false;
-						auto scene = BaseLevelScene::createScene(currentIndex + 1);
-						Director::getInstance()->replaceScene(scene);
+						auto context = carrot::core::state::GameStateProvider::Get();
+						context->SetState(std::make_shared<carrot::core::state::LoadingState>(currentIndex + 1));
 						// ����浵��tmp=1
 						//int tmp = 1;
 						//auto gameScene = GameScene::createSceneWithLevel(currentIndex + 1, tmp);
@@ -210,8 +212,8 @@ bool themescene::init() {
 
 						isNewGame[currentIndex] = true;
 						// �������л�����һ��
-						auto scene = BaseLevelScene::createScene(currentIndex + 1);
-						Director::getInstance()->replaceScene(scene);
+						auto context = carrot::core::state::GameStateProvider::Get();
+						context->SetState(std::make_shared<carrot::core::state::LoadingState>(currentIndex + 1));
 						// ������浵��tmp=0
 						//int tmp = 0;
 						//auto gameScene = GameScene::createSceneWithLevel(currentIndex + 1, tmp);
