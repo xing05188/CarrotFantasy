@@ -190,7 +190,8 @@ bool Bottle::AttackSprite(T* sp, BaseLevelScene* my_scene, float jiasu)
 		direction.normalize();
 		auto ang = direction.getAngle();
 		ang = m_pos.y < pos.y ? (ang < 0 ? fabs(ang / PI) * 180 : ang / PI * 180) : (ang > 0 ? -ang / PI * 180 : ang / PI * 180);
-		auto action1 = RotateTo::create(fabs(ang / (360*jiasu)), ang);//����ת��
+		auto rotationDuration = static_cast<float>(fabs(ang / (360.0 * jiasu)));
+		auto action1 = RotateTo::create(rotationDuration, static_cast<float>(ang));//����ת��
 
 
 
@@ -214,7 +215,7 @@ bool Bottle::AttackSprite(T* sp, BaseLevelScene* my_scene, float jiasu)
 				move.normalize();
 				move = move * 10;
 				//����ӵ�λ�ú͹���λ�ã������λ���ƶ�10�����ص�
-				auto action3 = MoveBy::create(10 / (speed*jiasu), move);
+				auto action3 = MoveBy::create(10.0f / (speed * jiasu), move);
 				curr_shell->runAction(action3);
 				});
 			auto callback4 = CallFunc::create([my_scene, sp, this]() {
@@ -223,7 +224,7 @@ bool Bottle::AttackSprite(T* sp, BaseLevelScene* my_scene, float jiasu)
 					ShellDemage(my_scene, sp);
 				}
 				});
-			de_time = 10 / (speed*jiasu);//�����ظ�������ƶ�����ʵ��׷��Ч��
+			de_time = 10.0f / (speed * jiasu);//�����ظ�������ƶ�����ʵ��׷��Ч��
 			auto sequence3 = Sequence::create(callback3, DelayTime::create(de_time), callback4, nullptr);
 			auto repeat = RepeatForever::create(sequence3);
 			curr_shell->runAction(repeat);
@@ -514,7 +515,7 @@ bool  MyPlane::AttackSprite(T* sp, BaseLevelScene* my_scene, std::vector<Monster
 					PlaneDemage(my_scene, monsters);
 					curr_ray->removeFromParent();
 					});
-				auto seq = Sequence::create(callback2, DelayTime::create(0.3/jiasu), callback3, nullptr);
+				auto seq = Sequence::create(callback2, DelayTime::create(0.3f / jiasu), callback3, nullptr);
 				sprite_mark->runAction(seq);
 
 
@@ -522,11 +523,11 @@ bool  MyPlane::AttackSprite(T* sp, BaseLevelScene* my_scene, std::vector<Monster
 			}
 			tower_angle = tower_angle - Clockwise * 5 < 0 ? 360 + tower_angle - Clockwise * 5 : (tower_angle - Clockwise * 5 >= 360 ? tower_angle - Clockwise * 5 - 360 : tower_angle - Clockwise * 5);
 			//�ѽǶȱ�Ϊ��ʱ��ת�������ӵ���ʽ�������˵�һ������
-			auto TurnLittle = RotateBy::create(5 / (360.0f*jiasu), Clockwise * 5);
+			auto TurnLittle = RotateBy::create(5.0f / (360.0f * jiasu), static_cast<float>(Clockwise * 5));
 			sprite_mark->runAction(TurnLittle);
 			de_ang += 5;
 			});
-		auto turn_sequence = Sequence::create(TurnCallback, DelayTime::create(5 / (360.0f*jiasu)), nullptr);
+		auto turn_sequence = Sequence::create(TurnCallback, DelayTime::create(5.0f / (360.0f * jiasu)), nullptr);
 		auto action1 = RepeatForever::create(turn_sequence);
 		sprite_mark->runAction(action1);
 		});

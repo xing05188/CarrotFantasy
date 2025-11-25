@@ -16,7 +16,10 @@
 #include<fstream>
 #include "core/EventBusProvider.h"
 #include "core/state/GameState.h"
+#include "core/state/GameStateProvider.h"
 #include "core/state/PausedState.h"
+#include "core/state/MenuState.h"
+#include "core/state/LevelSelectState.h"
 #include "gameplay/events/MoneyEvents.h"
 #include "ui/widgets/MoneyHud.h"
 using namespace rapidjson;
@@ -84,9 +87,7 @@ void BaseLevelScene::doublespeed(Ref* pSender) {
 }
 //��ͣ��ť
 void BaseLevelScene::pause_all(Ref* pSender) {
-    if (!gameStateContext) {
-        gameStateContext = std::make_shared<carrot::core::state::GameStateContext>();
-    }
+    gameStateContext = carrot::core::state::GameStateProvider::Get();
     if (!pausedState) {
         pausedState = std::make_shared<carrot::core::state::PausedState>();
     }
@@ -267,14 +268,25 @@ void BaseLevelScene::menu_all(Ref* pSender) {
         GameManager::getInstance()->stopAllSchedulers();
         //ȡ���¼�����
         manager->removeListener();
-        auto themeScene = themescene::createScene();
-        Director::getInstance()->replaceScene(themeScene);
-        Director::getInstance()->resume();
+        transitionToLevelSelectState();
         });
     menu->addChild(continueButton, 1);
     menu->addChild(chooseButton, 1);
     menu->addChild(restartButton, 1);
 }
+
+void BaseLevelScene::transitionToMenuState() {
+    gameStateContext = carrot::core::state::GameStateProvider::Get();
+    Director::getInstance()->resume();
+    gameStateContext->SetState(std::make_shared<carrot::core::state::MenuState>());
+}
+
+void BaseLevelScene::transitionToLevelSelectState() {
+    gameStateContext = carrot::core::state::GameStateProvider::Get();
+    Director::getInstance()->resume();
+    gameStateContext->SetState(std::make_shared<carrot::core::state::LevelSelectState>());
+}
+
 void BaseLevelScene::guaisou_jiansu(float guai_jiansu) {
     for (auto it = manager->monsters.begin(); it != manager->monsters.end(); it++) {
         if ((*it)->getHealth() > 0) 
@@ -449,8 +461,7 @@ void BaseLevelScene::gameover(bool is_win, int currentWaveNum, int allWaveNum) {
             }
             //����ǰ�Ѿ��ǿ��ŵ����һ�أ��򷵻�ѡ��ؿ�����
             else {
-                auto themeScene = themescene::createScene();
-                Director::getInstance()->replaceScene(themeScene);
+                transitionToLevelSelectState();
             }
             });
         menu->addChild(continueButton, 1);
@@ -505,9 +516,7 @@ void BaseLevelScene::gameover(bool is_win, int currentWaveNum, int allWaveNum) {
         GameManager::getInstance()->stopAllSchedulers();
         //ȡ���¼�����
         manager->removeListener();
-        auto themeScene = themescene::createScene();
-        Director::getInstance()->replaceScene(themeScene);
-        Director::getInstance()->resume();
+        transitionToLevelSelectState();
         });
     menu->addChild(chooseButton, 1);
 

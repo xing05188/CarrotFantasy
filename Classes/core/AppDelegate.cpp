@@ -24,6 +24,9 @@
 
 #include "AppDelegate.h"
 #include "MenuScene.h"
+#include "core/state/GameState.h"
+#include "core/state/GameStateProvider.h"
+#include "core/state/MenuState.h"
 #include "music.h"
 
 // #define USE_AUDIO_ENGINE 1
@@ -129,9 +132,11 @@ bool AppDelegate::applicationDidFinishLaunching() {
 #endif 
 
     // create a scene. it's an autorelease object
-    auto scene = MenuScene::createScene();
-    // run
-    director->runWithScene(scene);
+    if (!appStateContext_) {
+        appStateContext_ = std::make_shared<carrot::core::state::GameStateContext>();
+        carrot::core::state::GameStateProvider::Set(appStateContext_);
+    }
+    appStateContext_->SetState(std::make_shared<carrot::core::state::MenuState>());
     //�ڲ���
     Music::getInstance()->background_music();
     return true;

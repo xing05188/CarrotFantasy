@@ -26,6 +26,15 @@
 #define  _APP_DELEGATE_H_
 
 #include "cocos2d.h"
+#include <memory>
+
+namespace carrot {
+namespace core {
+namespace state {
+class GameStateContext;
+}  // namespace state
+}  // namespace core
+}  // namespace carrot
 
 /**
 @brief    The cocos2d Application.
@@ -58,6 +67,9 @@ public:
     @param  the pointer of the application
     */
     virtual void applicationWillEnterForeground();
+
+private:
+    std::shared_ptr<carrot::core::state::GameStateContext> appStateContext_;
 };
 
 #endif // _APP_DELEGATE_H_
