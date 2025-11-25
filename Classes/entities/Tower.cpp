@@ -1,7 +1,6 @@
 #include"Tower.h"
 #include"BaseLevelScene.h"
 #include"music.h"
-extern Music a;
 #include<cmath>
 
 #define CELL_SIZE 64
@@ -90,7 +89,7 @@ void Tower::destroy(BaseLevelScene* my_scene)
 	sprite_mark->release();
 	sp_base->release();
 	my_scene->updateMoney(sell_money[index][grade]);
-	a.TowerSell();
+	Music::getInstance()->TowerSell();
 }
 
 void Tower::update(BaseLevelScene* my_scene, Vec2 position)
@@ -108,7 +107,7 @@ void Tower::update(BaseLevelScene* my_scene, Vec2 position)
 	sprite_mark = tower;
 	range = range_table[index][grade];
 	demage = demage_table[index][grade];
-	a.TowerUpdata();
+	Music::getInstance()->TowerUpdata();
 }
 
 void Tower::UpMenuAppear(BaseLevelScene* my_scene, Vec2& position)
@@ -250,7 +249,7 @@ void Bottle::ShellProduct(Scene* my_scene)//�����ӵ�
 	/*shell->runAction(RotateBy::create(0.001, -tower_angle));*/
 	my_scene->addChild(shell);
 	curr_shell = shell;
-	a.bottleSound();
+	Music::getInstance()->bottleSound();
 }
 
 
@@ -291,7 +290,7 @@ void Bottle::ShellDemage(BaseLevelScene* my_scene, T* sp)//�ӵ��Թ���
 		c->removeFromParent();
 		});
 	// 8. ������������������������������ʱ����
-	//a.duanSound();
+	//Music::getInstance()->duanSound();
 	c->runAction(cocos2d::Sequence::create(animate, onDeathComplete, nullptr));
 	DemageSprite(sp, demage);
 	if (sp->getHealth() <= 0) {
@@ -364,7 +363,7 @@ void Sun::attack(BaseLevelScene* my_scene, std::vector<Monster*>& monsters, char
 //�������䷶Χ�ڵ����й��޺��ϰ���
 void Sun::SunAttack(BaseLevelScene* my_scene, std::vector<Monster*>& monsters, float jiasu)
 {
-	a.sunSound();
+	Music::getInstance()->sunSound();
 	curr_halo = Sprite::create("Towers/sunhalo.png");
 	curr_halo->setPosition(pos);
 	curr_halo->setScale(0.8 * range / curr_halo->getContentSize().width);
@@ -391,7 +390,7 @@ void Sun::SunAttack(BaseLevelScene* my_scene, std::vector<Monster*>& monsters, f
 				auto onDeathComplete = cocos2d::CallFunc::create([c]() {
 					c->removeFromParent();
 					});
-				//a.duanSound();
+				//Music::getInstance()->duanSound();
 				c->runAction(cocos2d::Sequence::create(animate, onDeathComplete, nullptr));
 				DemageSprite((*it).second, demage);
 				if ((*it).second->getHealth() <= 0) (*it).second->toDie(my_scene);
@@ -417,7 +416,7 @@ void Sun::SunAttack(BaseLevelScene* my_scene, std::vector<Monster*>& monsters, f
 				auto onDeathComplete = cocos2d::CallFunc::create([c]() {
 					c->removeFromParent();
 					});
-				//a.duanSound();
+				//Music::getInstance()->duanSound();
 				c->runAction(cocos2d::Sequence::create(animate, onDeathComplete, nullptr));
 				DemageSprite((*it), demage);
 				if ((*it)->getHealth() <= 0) (*it)->toDie(my_scene);
@@ -533,7 +532,7 @@ bool  MyPlane::AttackSprite(T* sp, BaseLevelScene* my_scene, std::vector<Monster
 		});
 
 	sprite_mark->runAction(callback1);
-	a.planeSound();
+	Music::getInstance()->planeSound();
 	return true;
 }
 
@@ -561,7 +560,7 @@ void MyPlane::PlaneDemage(BaseLevelScene* my_scene, std::vector<Monster*>& monst
 			auto onDeathComplete = cocos2d::CallFunc::create([c]() {
 				c->removeFromParent();
 				});
-			//a.duanSound();
+			//Music::getInstance()->duanSound();
 			c->runAction(cocos2d::Sequence::create(animate, onDeathComplete, nullptr));
 			DemageSprite((*it).second, demage);
 			if ((*it).second->getHealth() <= 0) (*it).second->toDie(my_scene);
@@ -589,7 +588,7 @@ void MyPlane::PlaneDemage(BaseLevelScene* my_scene, std::vector<Monster*>& monst
 			auto onDeathComplete = cocos2d::CallFunc::create([c]() {
 				c->removeFromParent();
 				});
-			//a.duanSound();
+			//Music::getInstance()->duanSound();
 			c->runAction(cocos2d::Sequence::create(animate, onDeathComplete, nullptr));
 			DemageSprite((*it), demage);
 			if ((*it)->getHealth() <= 0) (*it)->toDie(my_scene);
@@ -735,5 +734,5 @@ void Shit::ShellProduct(Scene* my_scene)//�����ڵ�
 	shell->setScale(1.0);
 	my_scene->addChild(shell);
 	curr_shell = shell;
-	a.ShitSound();
+	Music::getInstance()->ShitSound();
 }

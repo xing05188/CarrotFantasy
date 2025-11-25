@@ -26,7 +26,6 @@ using namespace ui;
 const Color3B moneyColor(154, 101, 25);
 
 extern float beishu;           //��Ϸ����
-extern Music a;                //����ϵͳ
 extern bool level_is_win[3];   //ͨ�����
 extern bool isNewGame[3];      //�浵���
 GameManager* manager;          //�������������ֽ���
@@ -66,7 +65,7 @@ void BaseLevelScene::updateCurrentWaveLabe() {
 //�����ٰ�ť
 void BaseLevelScene::doublespeed(Ref* pSender) {
     isDoubleSpeed = !isDoubleSpeed; // �л�������״̬
-    a.button_music();
+    Music::getInstance()->button_music();
     MenuItemImage* button = static_cast<MenuItemImage*>(pSender);
     if (isDoubleSpeed) {
         button->setNormalImage(Sprite::create("CarrotGuardRes/UI/doubleSpeed.png"));
@@ -93,7 +92,7 @@ void BaseLevelScene::pause_all(Ref* pSender) {
     }
 
     isGamePaused = !isGamePaused; // Switch pause state
-    a.button_music();
+    Music::getInstance()->button_music();
     MenuItemImage* button = static_cast<MenuItemImage*>(pSender);
     if (isGamePaused) {
         button->setNormalImage(Sprite::create("CarrotGuardRes/UI/continueButton.png"));
@@ -113,7 +112,7 @@ void BaseLevelScene::pause_all(Ref* pSender) {
 }
 
 void BaseLevelScene::wenhao(Ref* pSender) {
-    a.button_music();
+    Music::getInstance()->button_music();
     auto visibleSize = Director::getInstance()->getVisibleSize();//�ֱ��ʴ�С
     Vec2 origin = Director::getInstance()->getVisibleOrigin();
     Size screenSize = Director::getInstance()->getWinSize();    //��ȡ��Ļ��С
@@ -165,7 +164,7 @@ void BaseLevelScene::wenhao(Ref* pSender) {
     continueButton->setScale(1.9);
     // ������Ϸѡ��
     continueButton->setCallback([this, menuLayer](Ref* psender) {
-        a.button_music();
+        Music::getInstance()->button_music();
         this->removeChild(menuLayer);
         });
     menu->addChild(continueButton, 1);
@@ -174,7 +173,7 @@ void BaseLevelScene::wenhao(Ref* pSender) {
     leftButton->setPosition(Vec2(screenSize.width * 0.1, screenSize.height / 2));
     leftButton->addTouchEventListener([=](Ref* pSender, Widget::TouchEventType type) {
         if (type == Widget::TouchEventType::ENDED) {
-            a.button_music();
+            Music::getInstance()->button_music();
             int currentIndex = pageView->getCurrentPageIndex();
             CCLOG("currentIndex:  %d", currentIndex);
             if (currentIndex > 0)
@@ -186,7 +185,7 @@ void BaseLevelScene::wenhao(Ref* pSender) {
     rightButton->setPosition(Vec2(screenSize.width * 0.9, screenSize.height / 2));
     rightButton->addTouchEventListener([=](Ref* pSender, Widget::TouchEventType type) {
         if (type == Widget::TouchEventType::ENDED) {
-            a.button_music();
+            Music::getInstance()->button_music();
             int currentIndex = pageView->getCurrentPageIndex();
             if (currentIndex < 0)
                currentIndex = 0;
@@ -199,7 +198,7 @@ void BaseLevelScene::wenhao(Ref* pSender) {
 }
 //�˵���ť
 void BaseLevelScene::menu_all(Ref* pSender) {
-    a.button_music();
+    Music::getInstance()->button_music();
     Director::getInstance()->pause();
     auto visibleSize = Director::getInstance()->getVisibleSize();//�ֱ��ʴ�С
     Vec2 origin = Director::getInstance()->getVisibleOrigin();
@@ -234,7 +233,7 @@ void BaseLevelScene::menu_all(Ref* pSender) {
     chooseButton->setScale(1.5);
     // ������Ϸѡ��
     continueButton->setCallback([this, menuLayer](Ref* psender) {
-        a.button_music();
+        Music::getInstance()->button_music();
         this->removeChild(menuLayer);
         // �ж��ڵ���˵���ť֮ǰ�Ƿ�������ͣ��ť����ֹ����bug
         if (!isGamePaused) {
@@ -243,7 +242,7 @@ void BaseLevelScene::menu_all(Ref* pSender) {
         });
     //���¿�ʼ��Ϸѡ��
     restartButton->setCallback([this, menuLayer](Ref* psender) {
-        a.button_music();
+        Music::getInstance()->button_music();
         this->removeChild(menuLayer);
         // ȡ���� GameManager ��ص����е�����
         GameManager::getInstance()->stopAllSchedulers();
@@ -257,7 +256,7 @@ void BaseLevelScene::menu_all(Ref* pSender) {
 
     //ѡ��ؿ�ѡ��
     chooseButton->setCallback([this, menuLayer](Ref* psender) {
-        a.button_music();
+        Music::getInstance()->button_music();
         saveGameState();
         //���޴浵
         manager->saveMonstersDataToJson("level"+std::to_string(levelId)+"Monster.json");
@@ -284,7 +283,7 @@ void BaseLevelScene::guaisou_jiansu(float guai_jiansu) {
 }
 //����1��ť
 void BaseLevelScene::Jineng1(Ref* pSender) {
-    a.button_music();
+    Music::getInstance()->button_music();
     if (money >= 200) {
         updateMoney(-200);
         manager->Jineng1();
@@ -292,7 +291,7 @@ void BaseLevelScene::Jineng1(Ref* pSender) {
 }
 //����2��ť
 void BaseLevelScene::Jineng2(Ref* pSender) {
-    a.button_music();
+    Music::getInstance()->button_music();
     if (money >= 200) {
         updateMoney(-200); 
         guaisou_jiansu(0.01f);
@@ -306,7 +305,7 @@ void BaseLevelScene::Jineng2(Ref* pSender) {
 }
 //����3��ť
 void BaseLevelScene::Jineng3(Ref* pSender) {
-    a.button_music();
+    Music::getInstance()->button_music();
     if (money >= 500) {
         auto bong = Sprite::create();
         if (!bong) {
@@ -337,7 +336,7 @@ void BaseLevelScene::Jineng3(Ref* pSender) {
             CCLOG("bong.");
             bong->removeFromParent();
             });
-        a.bongSound();
+        Music::getInstance()->bongSound();
         bong->runAction(cocos2d::Sequence::create(animate,onbong, nullptr));
         updateMoney(-500);
         for (auto it = manager->monsters.begin(); it != manager->monsters.end(); it++) {
@@ -350,7 +349,7 @@ void BaseLevelScene::Jineng3(Ref* pSender) {
 }
 //����4��ť
 void BaseLevelScene::Jineng4(Ref* pSender) {
-    a.button_music();
+    Music::getInstance()->button_music();
     if (money >= 200) {
         updateMoney(-200);
         tower_jiasu = 2;
@@ -362,7 +361,7 @@ void BaseLevelScene::Jineng4(Ref* pSender) {
 }
 //����5��ť
 void BaseLevelScene::Jineng5(Ref* pSender) {
-    a.button_music();
+    Music::getInstance()->button_music();
     if (money >= 150) {
         updateMoney(-150);
         guaisou_jiansu(0.5f);
@@ -442,7 +441,7 @@ void BaseLevelScene::gameover(bool is_win, int currentWaveNum, int allWaveNum) {
         continueButton->setPosition(Vec2(960 * 0.613, 640 * 0.375));
         continueButton->setScale(1.38);
         continueButton->setCallback([this, menuLayer](Ref* psender) {
-            a.button_music();
+            Music::getInstance()->button_music();
             //����ǰδ�����ŵ����һ�أ��������һ��
             if (levelId < 3) {
                 auto scene = BaseLevelScene::createScene(levelId + 1);
@@ -483,7 +482,7 @@ void BaseLevelScene::gameover(bool is_win, int currentWaveNum, int allWaveNum) {
         againButton->setScale(0.9);
         // ���¿�ʼ��ť��ѡ��
         againButton->setCallback([this, menuLayer](Ref* psender) {
-            a.button_music();
+            Music::getInstance()->button_music();
             this->removeChild(menuLayer);
             // ȡ���� GameManager ��ص����е�����
            // GameManager::getInstance()->stopAllSchedulers();
@@ -500,7 +499,7 @@ void BaseLevelScene::gameover(bool is_win, int currentWaveNum, int allWaveNum) {
     chooseButton->setScale(1.4);
     //ѡ��ؿ�ѡ��
     chooseButton->setCallback([this, menuLayer](Ref* psender) {
-        a.button_music();
+        Music::getInstance()->button_music();
         this->removeChild(menuLayer);
         // ȡ���� GameManager ��ص����е�����
         GameManager::getInstance()->stopAllSchedulers();
@@ -729,7 +728,7 @@ void BaseLevelScene::CountDown(std::function<void()> onComplete)
         CallFunc::create([=] {
             countBackground->setVisible(true);
             count3->setVisible(true);
-            a.countSound();
+            Music::getInstance()->countSound();
             }),
         DelayTime::create(1),
 
@@ -738,7 +737,7 @@ void BaseLevelScene::CountDown(std::function<void()> onComplete)
             }),
         CallFunc::create([=] {
             count2->setVisible(true);
-            a.countSound();
+            Music::getInstance()->countSound();
             }),
         DelayTime::create(1),
 
@@ -747,14 +746,14 @@ void BaseLevelScene::CountDown(std::function<void()> onComplete)
             }),
         CallFunc::create([=] {
             count1->setVisible(true);
-            a.countSound();
+            Music::getInstance()->countSound();
             }),
         DelayTime::create(1),
 
         CallFunc::create([=] {
             this->removeChild(count1);
             count0->setVisible(true);
-            a.countSound();
+            Music::getInstance()->countSound();
             }),
         DelayTime::create(1),
 
@@ -997,7 +996,7 @@ void BaseLevelScene::handlePlant(const Vec2& position) {
             UpMenuAppear(mapPos);
         else {
             if (isTarget != 0) lock->removeFromParent();
-            a.ShootSelect();
+            Music::getInstance()->ShootSelect();
             isTarget = 2;
             tar_m = nullptr;
             tar_o = Obstacles[map_data[int(mapPos.x / CELL_SIZE)][int(mapPos.y / CELL_SIZE)].key];
@@ -1013,7 +1012,7 @@ void BaseLevelScene::handlePlant(const Vec2& position) {
         Monster* tool = IsTargetMonster(Vec2(position.x, Director::getInstance()->getVisibleSize().height - position.y));
         if (tool != nullptr) {
             if (isTarget != 0) lock->removeFromParent();
-            a.ShootSelect();
+            Music::getInstance()->ShootSelect();
             isTarget = 1;
             tar_m = tool;
             tar_o = nullptr;
@@ -1056,7 +1055,7 @@ void BaseLevelScene::PlantMenuGone(Vec2 position)
             Tower* this_tower = createTower(index);
             this_tower->build(this, last_position);
             updateMoney(-Tower::build_cost[index]);
-            a.TowerBuild();
+            Music::getInstance()->TowerBuild();
             int x = int(last_position.x / CELL_SIZE), y = int(last_position.y / CELL_SIZE);
             towers[map_data[x][y].key] = this_tower;
             map_data[x][y].flag = 1;

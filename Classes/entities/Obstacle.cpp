@@ -1,7 +1,6 @@
 #include"Obstacle.h"
 #include"BaseLevelScene.h"//��ΪBaseLevelScene���õ���Obstacle,Ϊ��ֹѭ��Ƕ�ף�����include�����������.h��
 #include"music.h"
-extern Music a;
 #define CELL_SIZE 64
 
 ObData Obstacle::Ob[10] = { {"Obstacles/obstacle1.png",1,50,300},{"Obstacles/obstacle2.png",1,50,300} ,{"Obstacles/obstacle3.png",1,100,400} ,
@@ -97,7 +96,7 @@ void Obstacle::toDie(BaseLevelScene*my_scene)
 
 	// 8. ������������������������������ʱ����
 	deathSprite->runAction(cocos2d::Sequence::create(animate, onDeathComplete, nullptr));
-	a.Object();
+	Music::getInstance()->Object();
 }
 
 void Obstacle::updateHealthBar(){

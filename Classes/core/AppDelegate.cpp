@@ -47,7 +47,6 @@ void createConsole() {
 }
 #endif
 USING_NS_CC;
-extern Music a;
 //�ֱ��ʴ�С
 static cocos2d::Size designResolutionSize = cocos2d::Size(960, 640);
 static cocos2d::Size smallResolutionSize = cocos2d::Size(480, 320);
@@ -123,7 +122,7 @@ bool AppDelegate::applicationDidFinishLaunching() {
     register_all_packages();
    
     //��Ԥ����
-    a.preloadSoundEffect("Music/bgm.mp3");
+    Music::getInstance()->preloadSoundEffect("Music/bgm.mp3");
     //����ģʽ
 #ifdef DEBUG_MODE
     createConsole();
@@ -134,7 +133,7 @@ bool AppDelegate::applicationDidFinishLaunching() {
     // run
     director->runWithScene(scene);
     //�ڲ���
-    a.background_music();
+    Music::getInstance()->background_music();
     return true;
 }
 

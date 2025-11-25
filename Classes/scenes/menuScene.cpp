@@ -4,7 +4,6 @@
 #include"seeScene.h"
 #include"music.h"
 using namespace ui;
-extern Music a;
 static void problemLoading(const char* filename)
 {
     printf("Error while loading: %s\n", filename);
@@ -187,32 +186,32 @@ bool MenuScene::init() {
 
 // a selector callback
 void MenuScene::menuCloseCallback(Ref* pSender) {
-	a.button_music();
+	Music::getInstance()->button_music();
 	Director::getInstance()->end();
 }
 
 //ȥ�ؿ�ѡ�����
 void MenuScene::to_AdvantureScene(Ref* pSender) {
-	a.button_music();
+	Music::getInstance()->button_music();
 	auto advantureScene = advanturescene::createScene();
 	Director::getInstance()->pushScene(advantureScene);
 }
 
 //ȥ���ý���
 void MenuScene::to_SetScene(Ref* pSender) {
-	a.button_music();
+	Music::getInstance()->button_music();
 	auto settingScene = setscene::createScene();
 	Director::getInstance()->pushScene(settingScene);
 }
 
 //���ǹ�ս�����Ȳ�Ū
 void MenuScene::to_seeScene(Ref* pSender) {
-	a.button_music();
+	Music::getInstance()->button_music();
 	auto witnessScene = seescene::createScene();
 	Director::getInstance()->pushScene(witnessScene);
 }
 void MenuScene::to_boss(Ref* pSender) {
-	a.button_music();
+	Music::getInstance()->button_music();
 	auto visibleSize = Director::getInstance()->getVisibleSize();//�ֱ��ʴ�С
 	Vec2 origin = Director::getInstance()->getVisibleOrigin();
 	//����boss����

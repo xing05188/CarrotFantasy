@@ -3,7 +3,6 @@
 #include"music.h"
 #include"BaseLevelScene.h"
 #include"GameManager.h"
-extern Music a;
 extern GameManager* manager;
 extern float tower_jiasu;
 int DeadCount=0;
@@ -197,7 +196,7 @@ void Monster::toDie(BaseLevelScene*my_scene)
         });
     // 8. ������������������������������ʱ����
     deathSprite->runAction(cocos2d::Sequence::create(animate, onDeathComplete, nullptr));
-    a.normalSound();
+    Music::getInstance()->normalSound();
     // 9. ɾ�����ﱾ��
     this->retain();
     my_scene->removeChild(this);
@@ -231,7 +230,7 @@ void BossYellow::SpecialAttack() {
     //boss���ܣ������Ĺ��ټ���
     CCLOG("BossYellow's Attack!");
     showBossSkill("SpecialAttack:Slow Speed!");
-            a.duanSound();
+            Music::getInstance()->duanSound();
             tower_jiasu = 0.3;
             auto delayaction = Sequence::create(DelayTime::create(20.0f), CallFunc::create([=] {
                 tower_jiasu = 1;
@@ -245,7 +244,7 @@ void BossSheep::SpecialAttack()
     //boss���ܣ������һ������
     CCLOG("BossSheep's Attack!");
     showBossSkill("SpecialAttack:Destroy!");
-            a.duanSound();
+            Music::getInstance()->duanSound();
             auto bong = Sprite::create();
             if (!bong) {
                 CCLOG("Failed to create bong sprite.");
@@ -275,7 +274,7 @@ void BossSheep::SpecialAttack()
                 CCLOG("bong.");
                 bong->removeFromParent();
                 });
-            a.bongSound();
+            Music::getInstance()->bongSound();
             bong->runAction(cocos2d::Sequence::create(animate, onbong, nullptr));
             int num = 0;
             for (auto it = manager->getScene()->towers.begin(); it != manager->getScene()->towers.end();) {
