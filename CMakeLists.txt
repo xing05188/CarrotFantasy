@@ -79,6 +79,7 @@ list(APPEND GAME_SOURCE
      Classes/core/state/LevelSelectState.cpp
      Classes/core/state/LoadingState.cpp
      Classes/core/state/LevelState.cpp
+     Classes/core/state/GameOverState.cpp
      )
 
 list(APPEND GAME_HEADER
@@ -106,6 +107,7 @@ list(APPEND GAME_HEADER
      Classes/core/state/LevelSelectState.h
      Classes/core/state/LoadingState.h
      Classes/core/state/LevelState.h
+     Classes/core/state/GameOverState.h
      Classes/core/state/GameStateProvider.h
      Classes/gameplay/events/CarrotEvents.h
      )

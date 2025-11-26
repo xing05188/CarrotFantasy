@@ -51,6 +51,7 @@ private:
     //�ٶȿ������
     bool isDoubleSpeed = false;                              // ��ʼ��Ϊfalse����ʾ��Ϸ��ʼ���Ƕ�����״̬
     bool isGamePaused = false;
+    bool hasGameOverTriggered = false;
     std::shared_ptr<carrot::core::state::GameStateContext> gameStateContext;
     std::shared_ptr<carrot::core::state::GameState> pausedState;
 
