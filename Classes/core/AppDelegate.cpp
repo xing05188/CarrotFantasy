@@ -25,6 +25,8 @@
 #include "AppDelegate.h"
 #include "MenuScene.h"
 #include "core/state/GameState.h"
+#include "core/state/GameFlowController.h"
+#include "core/state/GameFlowProvider.h"
 #include "core/state/GameStateProvider.h"
 #include "core/state/MenuState.h"
 #include "music.h"
@@ -136,7 +138,15 @@ bool AppDelegate::applicationDidFinishLaunching() {
         appStateContext_ = std::make_shared<carrot::core::state::GameStateContext>();
         carrot::core::state::GameStateProvider::Set(appStateContext_);
     }
-    appStateContext_->SetState(std::make_shared<carrot::core::state::MenuState>());
+
+    auto flowController = carrot::core::state::GameFlowProvider::Get();
+    if (!flowController) {
+        flowController = std::make_shared<carrot::core::state::GameFlowController>(appStateContext_);
+        carrot::core::state::GameFlowProvider::Set(flowController);
+    } else {
+        flowController->SetContext(appStateContext_);
+    }
+    flowController->TransitionToMenu();
     //�ڲ���
     Music::getInstance()->background_music();
     return true;

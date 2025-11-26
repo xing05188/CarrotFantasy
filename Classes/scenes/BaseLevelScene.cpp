@@ -16,6 +16,8 @@
 #include<fstream>
 #include "core/EventBusProvider.h"
 #include "core/state/GameState.h"
+#include "core/state/GameFlowProvider.h"
+#include "core/state/GameFlowController.h"
 #include "core/state/GameStateProvider.h"
 #include "core/state/PausedState.h"
 #include "core/state/MenuState.h"
@@ -277,9 +279,18 @@ void BaseLevelScene::menu_all(Ref* pSender) {
 }
 
 void BaseLevelScene::transitionToMenuState() {
-    gameStateContext = carrot::core::state::GameStateProvider::Get();
     Director::getInstance()->resume();
-    gameStateContext->SetState(std::make_shared<carrot::core::state::MenuState>());
+    auto flowController = carrot::core::state::GameFlowProvider::Get();
+    if (flowController) {
+        flowController->TransitionToMenu();
+        return;
+    }
+
+    CCLOG("BaseLevelScene: GameFlowController not available, falling back to direct state switch");
+    gameStateContext = carrot::core::state::GameStateProvider::Get();
+    if (gameStateContext) {
+        gameStateContext->SetState(std::make_shared<carrot::core::state::MenuState>());
+    }
 }
 
 void BaseLevelScene::transitionToLevelSelectState() {
