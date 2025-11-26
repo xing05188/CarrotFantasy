@@ -90,11 +90,6 @@ void BaseLevelScene::doublespeed(Ref* pSender) {
 }
 //��ͣ��ť
 void BaseLevelScene::pause_all(Ref* pSender) {
-    gameStateContext = carrot::core::state::GameStateProvider::Get();
-    if (!pausedState) {
-        pausedState = std::make_shared<carrot::core::state::PausedState>();
-    }
-
     isGamePaused = !isGamePaused; // Switch pause state
     Music::getInstance()->button_music();
     MenuItemImage* button = static_cast<MenuItemImage*>(pSender);
@@ -106,12 +101,24 @@ void BaseLevelScene::pause_all(Ref* pSender) {
         pauseTop->setPosition(464, 610);
         pauseTop->setScale(2.0f);
         this->addChild(pauseTop, 10);
-        gameStateContext->SetState(pausedState);
     } else {
         button->setNormalImage(Sprite::create("CarrotGuardRes/UI/pauseButton.png"));
         button->setSelectedImage(Sprite::create("CarrotGuardRes/UI/pauseButton.png"));
         this->removeChildByName("pauseTop");
-        gameStateContext->SetState(nullptr);
+    }
+
+    auto flowController = carrot::core::state::GameFlowProvider::Get();
+    if (flowController) {
+        flowController->SetPaused(isGamePaused);
+        return;
+    }
+
+    CCLOG("BaseLevelScene: GameFlowController not available, falling back to direct pause handling");
+    static std::shared_ptr<carrot::core::state::GameState> fallbackPausedState =
+        std::make_shared<carrot::core::state::PausedState>();
+    auto context = carrot::core::state::GameStateProvider::Get();
+    if (context) {
+        context->SetState(isGamePaused ? fallbackPausedState : nullptr);
     }
 }
 
@@ -287,16 +294,25 @@ void BaseLevelScene::transitionToMenuState() {
     }
 
     CCLOG("BaseLevelScene: GameFlowController not available, falling back to direct state switch");
-    gameStateContext = carrot::core::state::GameStateProvider::Get();
-    if (gameStateContext) {
-        gameStateContext->SetState(std::make_shared<carrot::core::state::MenuState>());
+    auto context = carrot::core::state::GameStateProvider::Get();
+    if (context) {
+        context->SetState(std::make_shared<carrot::core::state::MenuState>());
     }
 }
 
 void BaseLevelScene::transitionToLevelSelectState() {
-    gameStateContext = carrot::core::state::GameStateProvider::Get();
     Director::getInstance()->resume();
-    gameStateContext->SetState(std::make_shared<carrot::core::state::LevelSelectState>());
+    auto flowController = carrot::core::state::GameFlowProvider::Get();
+    if (flowController) {
+        flowController->TransitionToLevelSelect();
+        return;
+    }
+
+    CCLOG("BaseLevelScene: GameFlowController not available, falling back to direct level select state");
+    auto context = carrot::core::state::GameStateProvider::Get();
+    if (context) {
+        context->SetState(std::make_shared<carrot::core::state::LevelSelectState>());
+    }
 }
 
 void BaseLevelScene::guaisou_jiansu(float guai_jiansu) {
@@ -427,12 +443,21 @@ void BaseLevelScene::gameover(bool is_win, int currentWaveNum, int allWaveNum) {
         return;
     }
     hasGameOverTriggered = true;
+    auto flowController = carrot::core::state::GameFlowProvider::Get();
+    if (flowController) {
+        flowController->ShowGameOver(is_win, levelId, currentWaveNum, allWaveNum);
+        return;
+    }
+
+    CCLOG("BaseLevelScene: GameFlowController not available, falling back to direct game over state");
     auto context = carrot::core::state::GameStateProvider::Get();
-    context->SetState(std::make_shared<carrot::core::state::GameOverState>(
-        is_win,
-        levelId,
-        currentWaveNum,
-        allWaveNum));
+    if (context) {
+        context->SetState(std::make_shared<carrot::core::state::GameOverState>(
+            is_win,
+            levelId,
+            currentWaveNum,
+            allWaveNum));
+    }
 }
 /******************************************/
 

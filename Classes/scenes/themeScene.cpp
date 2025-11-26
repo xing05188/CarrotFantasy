@@ -3,6 +3,8 @@
 #include"music.h"
 #include "ui/CocosGUI.h"
 #include"BaseLevelScene.h"
+#include "core/state/GameFlowController.h"
+#include "core/state/GameFlowProvider.h"
 #include "core/state/GameStateProvider.h"
 #include "core/state/LoadingState.h"
 #include "json/document.h"
@@ -183,6 +185,19 @@ bool themescene::init() {
 			clearRelatedButtons();
 			int currentIndex = pageView->getCurrentPageIndex();
 			if (currentIndex == 0 || (currentIndex == 1 && level_is_win[0] == true) || (currentIndex == 2 && level_is_win[1] == true)) {
+                auto triggerLoading = [currentIndex]() {
+                    int levelId = currentIndex + 1;
+                    auto flowController = carrot::core::state::GameFlowProvider::Get();
+                    if (flowController) {
+                        flowController->StartLoadingLevel(levelId);
+                        return;
+                    }
+                    CCLOG("themescene: GameFlowController unavailable, falling back to GameStateProvider for level %d", levelId);
+                    auto context = carrot::core::state::GameStateProvider::Get();
+                    if (context) {
+                        context->SetState(std::make_shared<carrot::core::state::LoadingState>(levelId));
+                    }
+                };
 				// �����浵��ť
 				auto confirmButton = Button::create("CarrotGuardRes/UI/fileNormal.png", "CarrotGuardRes/UI/fileSelected.png");
 				confirmButton->setName("confirmButton");
@@ -192,8 +207,7 @@ bool themescene::init() {
 						Music::getInstance()->button_music();
 						
 						isNewGame[currentIndex] = false;
-						auto context = carrot::core::state::GameStateProvider::Get();
-						context->SetState(std::make_shared<carrot::core::state::LoadingState>(currentIndex + 1));
+						triggerLoading();
 						// ����浵��tmp=1
 						//int tmp = 1;
 						//auto gameScene = GameScene::createSceneWithLevel(currentIndex + 1, tmp);
@@ -212,8 +226,7 @@ bool themescene::init() {
 
 						isNewGame[currentIndex] = true;
 						// �������л�����һ��
-						auto context = carrot::core::state::GameStateProvider::Get();
-						context->SetState(std::make_shared<carrot::core::state::LoadingState>(currentIndex + 1));
+						triggerLoading();
 						// ������浵��tmp=0
 						//int tmp = 0;
 						//auto gameScene = GameScene::createSceneWithLevel(currentIndex + 1, tmp);

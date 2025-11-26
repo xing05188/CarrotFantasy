@@ -4,6 +4,8 @@
 
 #include "BaseLevelScene.h"
 #include "GameManager.h"
+#include "core/state/GameFlowController.h"
+#include "core/state/GameFlowProvider.h"
 #include "core/state/GameStateProvider.h"
 #include "core/state/LevelSelectState.h"
 #include "audio/music.h"
@@ -24,6 +26,14 @@ void stopGameplayLoops() {
         manager->stopAllSchedulers();
         manager->removeListener();
     }
+}
+
+std::shared_ptr<GameFlowController> ResolveFlowController() {
+    auto controller = GameFlowProvider::Get();
+    if (!controller) {
+        CCLOG("GameOverState: GameFlowController unavailable, using legacy state switches");
+    }
+    return controller;
 }
 }  // namespace
 
@@ -185,8 +195,15 @@ void GameOverState::addLevelSelectButton(cocos2d::Menu* menu) {
 }
 
 void GameOverState::transitionToLevelSelect() {
+    if (auto controller = ResolveFlowController()) {
+        controller->TransitionToLevelSelect();
+        return;
+    }
+
     auto context = GameStateProvider::Get();
-    context->SetState(std::make_shared<LevelSelectState>());
+    if (context) {
+        context->SetState(std::make_shared<LevelSelectState>());
+    }
 }
 
 void GameOverState::handleWinContinue() {
@@ -202,9 +219,11 @@ void GameOverState::restartLevel() {
 }
 
 void GameOverState::replaceWithLevel(int levelId) {
-    auto self = shared_from_this();
-    auto context = GameStateProvider::Get();
-    context->SetState(nullptr);
+    if (auto controller = ResolveFlowController()) {
+        controller->StartLoadingLevel(levelId);
+        return;
+    }
+
     auto director = cocos2d::Director::getInstance();
     auto scene = BaseLevelScene::createScene(levelId);
     director->replaceScene(scene);

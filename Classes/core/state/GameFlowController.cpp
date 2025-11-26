@@ -1,6 +1,9 @@
 #include "GameFlowController.h"
 
 #include "GameState.h"
+#include "GameOverState.h"
+#include "LoadingState.h"
+#include "PausedState.h"
 #include "GameStateProvider.h"
 #include "LevelSelectState.h"
 #include "MenuState.h"
@@ -41,6 +44,41 @@ void GameFlowController::TransitionToLevelSelect() {
         return;
     }
     context->SetState(std::make_shared<LevelSelectState>());
+}
+
+void GameFlowController::StartLoadingLevel(int levelId) {
+    auto context = EnsureContextLocked();
+    if (!context) {
+        LogMissingContext("Loading");
+        return;
+    }
+    context->SetState(std::make_shared<LoadingState>(levelId));
+}
+
+void GameFlowController::SetPaused(bool paused) {
+    auto context = EnsureContextLocked();
+    if (!context) {
+        LogMissingContext(paused ? "Pause" : "Resume");
+        return;
+    }
+
+    if (paused) {
+        if (!pausedState_) {
+            pausedState_ = std::make_shared<PausedState>();
+        }
+        context->SetState(pausedState_);
+    } else {
+        context->SetState(nullptr);
+    }
+}
+
+void GameFlowController::ShowGameOver(bool isWin, int levelId, int currentWave, int allWave) {
+    auto context = EnsureContextLocked();
+    if (!context) {
+        LogMissingContext("GameOver");
+        return;
+    }
+    context->SetState(std::make_shared<GameOverState>(isWin, levelId, currentWave, allWave));
 }
 
 std::shared_ptr<GameStateContext> GameFlowController::EnsureContextLocked() {

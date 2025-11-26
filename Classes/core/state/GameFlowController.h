@@ -7,6 +7,7 @@ namespace carrot {
 namespace core {
 namespace state {
 
+class GameState;
 class GameStateContext;
 
 // Centralizes high-level game flow transitions so individual scenes
@@ -19,12 +20,16 @@ public:
 
     void TransitionToMenu();
     void TransitionToLevelSelect();
+    void StartLoadingLevel(int levelId);
+    void SetPaused(bool paused);
+    void ShowGameOver(bool isWin, int levelId, int currentWave, int allWave);
 
 private:
     std::shared_ptr<GameStateContext> EnsureContextLocked();
 
     std::mutex mutex_;
     std::weak_ptr<GameStateContext> context_;
+    std::shared_ptr<GameState> pausedState_;
 };
 
 }  // namespace state
