@@ -16,10 +16,13 @@
 #include<fstream>
 #include "core/EventBusProvider.h"
 #include "core/state/GameState.h"
+#include "core/state/GameFlowProvider.h"
+#include "core/state/GameFlowController.h"
 #include "core/state/GameStateProvider.h"
 #include "core/state/PausedState.h"
 #include "core/state/MenuState.h"
 #include "core/state/LevelSelectState.h"
+#include "core/state/GameOverState.h"
 #include "gameplay/events/MoneyEvents.h"
 #include "ui/widgets/MoneyHud.h"
 using namespace rapidjson;
@@ -87,11 +90,6 @@ void BaseLevelScene::doublespeed(Ref* pSender) {
 }
 //��ͣ��ť
 void BaseLevelScene::pause_all(Ref* pSender) {
-    gameStateContext = carrot::core::state::GameStateProvider::Get();
-    if (!pausedState) {
-        pausedState = std::make_shared<carrot::core::state::PausedState>();
-    }
-
     isGamePaused = !isGamePaused; // Switch pause state
     Music::getInstance()->button_music();
     MenuItemImage* button = static_cast<MenuItemImage*>(pSender);
@@ -103,12 +101,24 @@ void BaseLevelScene::pause_all(Ref* pSender) {
         pauseTop->setPosition(464, 610);
         pauseTop->setScale(2.0f);
         this->addChild(pauseTop, 10);
-        gameStateContext->SetState(pausedState);
     } else {
         button->setNormalImage(Sprite::create("CarrotGuardRes/UI/pauseButton.png"));
         button->setSelectedImage(Sprite::create("CarrotGuardRes/UI/pauseButton.png"));
         this->removeChildByName("pauseTop");
-        gameStateContext->SetState(nullptr);
+    }
+
+    auto flowController = carrot::core::state::GameFlowProvider::Get();
+    if (flowController) {
+        flowController->SetPaused(isGamePaused);
+        return;
+    }
+
+    CCLOG("BaseLevelScene: GameFlowController not available, falling back to direct pause handling");
+    static std::shared_ptr<carrot::core::state::GameState> fallbackPausedState =
+        std::make_shared<carrot::core::state::PausedState>();
+    auto context = carrot::core::state::GameStateProvider::Get();
+    if (context) {
+        context->SetState(isGamePaused ? fallbackPausedState : nullptr);
     }
 }
 
@@ -276,15 +286,33 @@ void BaseLevelScene::menu_all(Ref* pSender) {
 }
 
 void BaseLevelScene::transitionToMenuState() {
-    gameStateContext = carrot::core::state::GameStateProvider::Get();
     Director::getInstance()->resume();
-    gameStateContext->SetState(std::make_shared<carrot::core::state::MenuState>());
+    auto flowController = carrot::core::state::GameFlowProvider::Get();
+    if (flowController) {
+        flowController->TransitionToMenu();
+        return;
+    }
+
+    CCLOG("BaseLevelScene: GameFlowController not available, falling back to direct state switch");
+    auto context = carrot::core::state::GameStateProvider::Get();
+    if (context) {
+        context->SetState(std::make_shared<carrot::core::state::MenuState>());
+    }
 }
 
 void BaseLevelScene::transitionToLevelSelectState() {
-    gameStateContext = carrot::core::state::GameStateProvider::Get();
     Director::getInstance()->resume();
-    gameStateContext->SetState(std::make_shared<carrot::core::state::LevelSelectState>());
+    auto flowController = carrot::core::state::GameFlowProvider::Get();
+    if (flowController) {
+        flowController->TransitionToLevelSelect();
+        return;
+    }
+
+    CCLOG("BaseLevelScene: GameFlowController not available, falling back to direct level select state");
+    auto context = carrot::core::state::GameStateProvider::Get();
+    if (context) {
+        context->SetState(std::make_shared<carrot::core::state::LevelSelectState>());
+    }
 }
 
 void BaseLevelScene::guaisou_jiansu(float guai_jiansu) {
@@ -411,115 +439,25 @@ void BaseLevelScene::UpMenuGone(Vec2& position)
 }
 //��Ϸ�����Ľ��洦��
 void BaseLevelScene::gameover(bool is_win, int currentWaveNum, int allWaveNum) {
-    //Director::getInstance()->pause();
-    // ���û�ɫ���ֲ�
-    auto menuLayer = LayerColor::create(Color4B(0, 0, 0, 0));
-    menuLayer->setPosition(Vec2::ZERO);
-    this->addChild(menuLayer, 10);
-
-    // �����˵�
-    auto menu = Menu::create();
-    menu->setPosition(Vec2::ZERO);
-    menuLayer->addChild(menu, 1);
-    // ��Ϸʤ��
-    if (is_win) {
-        level_is_win[levelId - 1] = true;
-        saveGameState();
-        //������Ϸ��ʤ����
-        auto gameWinBackground = Sprite::create("CarrotGuardRes/UI/WinGame.png");
-        gameWinBackground->setPosition(Vec2(480, 320));
-        gameWinBackground->setScale(1.5f);
-        menuLayer->addChild(gameWinBackground, 0);
-        //���ӻ�ʤ�Ľ��ܲ���ʶ
-        auto goldenCarrot = Sprite::create("CarrotGuardRes/UI/goldenCarrot.png");
-        goldenCarrot->setPosition(Vec2(960 * 0.493, 640 * 0.7));
-        menuLayer->addChild(goldenCarrot, 0);
-
-        // ʤ���������ʾ��
-
-        _curNumberLabel = Label::createWithSystemFont(StringUtils::format("%d", currentWaveNum > allWaveNum ? allWaveNum + 1 : currentWaveNum + 1), "Arial", 32);
-        _curNumberLabel->setColor(Color3B::YELLOW);
-        _curNumberLabel->setPosition(960 * 0.51, 640 * 0.54);
-        Label* loseWordLeft = Label::createWithSystemFont("fought off", "Arial", 30);
-        loseWordLeft->setPosition(960 * 0.36, 640 * 0.54);
-        Label* loseWordRight = Label::createWithSystemFont("waves", "Arial", 30);
-        loseWordRight->setPosition(960 * 0.60, 640 * 0.545);
-
-        this->addChild(_curNumberLabel, 10);
-        this->addChild(loseWordLeft, 10);
-        this->addChild(loseWordRight, 10);
-        //������Ϸ��ť
-        auto continueButton = MenuItemImage::create("CarrotGuardRes/UI/continueNormal.png", "CarrotGuardRes/UI/continueSelected.png");
-        continueButton->setPosition(Vec2(960 * 0.613, 640 * 0.375));
-        continueButton->setScale(1.38);
-        continueButton->setCallback([this, menuLayer](Ref* psender) {
-            Music::getInstance()->button_music();
-            //����ǰδ�����ŵ����һ�أ��������һ��
-            if (levelId < 3) {
-                auto scene = BaseLevelScene::createScene(levelId + 1);
-                Director::getInstance()->replaceScene(scene);
-            }
-            //����ǰ�Ѿ��ǿ��ŵ����һ�أ��򷵻�ѡ��ؿ�����
-            else {
-                transitionToLevelSelectState();
-            }
-            });
-        menu->addChild(continueButton, 1);
+    if (hasGameOverTriggered) {
+        return;
     }
-    // ��Ϸʧ��
-    else {
-        auto gameLoseBackground = Sprite::create("CarrotGuardRes/UI/LoseGame.png");
-        gameLoseBackground->setPosition(Vec2(960 / 2 + 960 * 0.01, 640 / 2 + 640 * 0.015));
-        gameLoseBackground->setScale(1.5f);
-        menuLayer->addChild(gameLoseBackground, 0);
-
-        // ��Ϸʧ�ܵ������ʾ��
-
-        _curNumberLabel = Label::createWithSystemFont(StringUtils::format("%d", currentWaveNum), "Arial", 32);// ��ʱû��currnumΪʲô���1��������-1
-        _curNumberLabel->setColor(Color3B::YELLOW);
-        _curNumberLabel->setPosition(960 * 0.51, 640 * 0.54);
-        Label* loseWordLeft = Label::createWithSystemFont("fought off", "Arial", 30);
-
-        loseWordLeft->setPosition(960 * 0.36, 640 * 0.54);
-        Label* loseWordRight = Label::createWithSystemFont("waves", "Arial", 30);
-        loseWordRight->setPosition(960 * 0.60, 640 * 0.54);
-
-        this->addChild(_curNumberLabel, 10);
-        this->addChild(loseWordLeft, 10);
-        this->addChild(loseWordRight, 10);
-        //������Ϸ��ť
-        auto againButton = MenuItemImage::create("CarrotGuardRes/UI/AgainNormal.png", "CarrotGuardRes/UI/AgainSelected.png");
-        againButton->setPosition(Vec2(960 * 0.61, 640 * 0.37));
-        againButton->setScale(0.9);
-        // ���¿�ʼ��ť��ѡ��
-        againButton->setCallback([this, menuLayer](Ref* psender) {
-            Music::getInstance()->button_music();
-            this->removeChild(menuLayer);
-            // ȡ���� GameManager ��ص����е�����
-           // GameManager::getInstance()->stopAllSchedulers();
-            auto scene = BaseLevelScene::createScene(levelId);
-            Director::getInstance()->replaceScene(scene);
-            //Director::getInstance()->resume();
-            });
-        menu->addChild(againButton, 1);
-
+    hasGameOverTriggered = true;
+    auto flowController = carrot::core::state::GameFlowProvider::Get();
+    if (flowController) {
+        flowController->ShowGameOver(is_win, levelId, currentWaveNum, allWaveNum);
+        return;
     }
-    // ѡ����Ϸ�ؿ���ť
-    auto chooseButton = MenuItemImage::create("CarrotGuardRes/UI/chooseLevelNormal.png", "CarrotGuardRes/UI/chooseLevelSelected.png");
-    chooseButton->setPosition(Vec2(960 * 0.38, 640 * 0.37));
-    chooseButton->setScale(1.4);
-    //ѡ��ؿ�ѡ��
-    chooseButton->setCallback([this, menuLayer](Ref* psender) {
-        Music::getInstance()->button_music();
-        this->removeChild(menuLayer);
-        // ȡ���� GameManager ��ص����е�����
-        GameManager::getInstance()->stopAllSchedulers();
-        //ȡ���¼�����
-        manager->removeListener();
-        transitionToLevelSelectState();
-        });
-    menu->addChild(chooseButton, 1);
 
+    CCLOG("BaseLevelScene: GameFlowController not available, falling back to direct game over state");
+    auto context = carrot::core::state::GameStateProvider::Get();
+    if (context) {
+        context->SetState(std::make_shared<carrot::core::state::GameOverState>(
+            is_win,
+            levelId,
+            currentWaveNum,
+            allWaveNum));
+    }
 }
 /******************************************/
 
@@ -787,6 +725,7 @@ bool BaseLevelScene::initWithLevel(int level)
     {
         return false;
     }
+    hasGameOverTriggered = false;
     Director::getInstance()->resume();
     this->levelId = level;                     //�洢�ؿ����
     this->loadMap();                           // ���ض�Ӧ�ؿ��ĵ�ͼ
