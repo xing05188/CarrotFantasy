@@ -7,33 +7,37 @@
 #include<fstream>
 #include <sstream>
 #include"Music.h"
+#include "EventBusProvider.h"
+#include "../gameplay/events/MoneyEvents.h"
+#include "../gameplay/events/GameFlowEvents.h"
+#include "../gameplay/events/MonsterEvents.h"
+#include "../gameplay/events/CarrotEvents.h"
 
 USING_NS_CC;
 extern int DeadCount;
 
-/*****************GameManager���**********************/
-//��̬��Ա�����Ķ���ͳ�ʼ��
+// 单例实例指针（全局唯一 GameManager）
 GameManager* GameManager::instance = nullptr;
-//��������ʵ��
+
+// 获取 GameManager 单例；首次调用时创建实例，并可顺便绑定当前场景
 GameManager* GameManager::getInstance(BaseLevelScene* scene) {
     if (!instance) {
         instance = new GameManager();
     }
-    // ��������˳���������¹����ĳ���
     if (scene) {
         instance->setScene(scene);
     }
     return instance;
 }
-// ���õ�ǰ����
+// 绑定当前正在使用的关卡场景（用于添加节点、取 tileMap 等）
 void GameManager::setScene(BaseLevelScene* scene) {
     currentScene = scene;
 }
-// ��ȡ��ǰ����
+// 获取当前绑定的场景指针
 BaseLevelScene* GameManager::getScene() const {
     return currentScene;
 }
-// �ͷŵ���ʵ��
+// 释放单例，占用完毕后在退出游戏时可调用
 void GameManager::destroyInstance() {
     if (instance) {
         delete instance;
@@ -41,23 +45,23 @@ void GameManager::destroyInstance() {
     }
 }
 
-/*****************����**********************/
-//��֡����״̬
+// 预留的逐帧更新接口，目前仅打印调试信息
 void GameManager::update(float deltaTime) {
     CCLOG("monsters size %d", monsters.size());
     CCLOG("monsters DEAD NUM %d", DeadCount);
 }
-//�����״̬
+// 判断失败条件并仅发布一次游戏失败事件，供 UI 监听
 bool GameManager::CheckLose()
 {
     if (carrot->getHP() <= 0)
     {
         CCLOG("LOSE THE GAME!");
+        PublishGameLostEvent();
         return true;
     }
     return false;
 }
-//���Ӯ״̬
+// 判断胜利条件（全部波次完成且怪物清空）并发布胜利事件
 bool GameManager::CheckWin()
 {
     if (waveIndex + 1 < AllWaveNum) return false;
@@ -69,10 +73,34 @@ bool GameManager::CheckWin()
     }
 
     CCLOG("WIN THE GAME!");
+    PublishGameWonEvent();
     return true;
 }
-/*****************�ؿ����**********************/
-//��ʼ���ؿ�����
+void GameManager::ApplyMonsterSpeed(float speedFactor) {
+    for (auto* monster : monsters) {
+        if (!monster) continue;
+        if (monster->getHealth() <= 0) continue;
+        if (monster->speedaction) {
+            monster->speedaction->setSpeed(speedFactor);
+        }
+    }
+}
+
+void GameManager::KillAllMonsters() {
+    auto bus = carrot::core::EventBusProvider::Get();
+    for (auto* monster : monsters) {
+        if (!monster) continue;
+        if (monster->getHealth() <= 0) continue;
+        monster->setHealth(0);
+        if (bus) {
+            carrot::gameplay::events::MonsterDiedEvent evt{};
+            evt.monster = monster;
+            bus->Publish(carrot::gameplay::events::kMonsterDiedEventId, evt);
+        }
+    }
+}
+
+// 初始化关卡的路径、波次、金币与胜负标记，并加载相关资源
 void GameManager::initLevel(int level,bool initMode)
 {
     levelId=level;
@@ -84,22 +112,18 @@ void GameManager::initLevel(int level,bool initMode)
     ClearMonsters();
     AllMonsterNum=0;
     DeadCount=0;
-    //��ʼ��·��
+    SetMoney(kDefaultStartingMoney, false);
+    hasGameWon = false;
+    hasGameLost = false;
     initPath();
-    //��ʼ������ͼ����Դ
     loadMonsterResources();
-    //��ʼ���ܲ�
     initCarrot();
-    // ע���¼�������
      registerListener();
-    //���ع���������Դ
-     //������ǳ�ʼģʽ,�Ͷ�ȡ��ʼ����
      
      if(!initMode)
      {
     loadMonsterWaveConfig("MonsterWaves.json", "level"+std::to_string(level));
      }
-     //���򣬶��浵����
      else
      {
         if (!loadGameData("level" + std::to_string(levelId) + "Monster.json"))
@@ -108,17 +132,14 @@ void GameManager::initLevel(int level,bool initMode)
         }
      }
 }
-//��ʼ��ĳһ�ؿ��ؿ�·��
 void GameManager::initPath()
 {
-    // ����·��
     if (pathsCache.find(levelId) == pathsCache.end()) {
         if (!loadPathForLevel(levelId, "paths.json")) {
             CCLOG("Failed to load path for level %d.", levelId);
             return;
         }
     }
-    // ��ȡ���ؿ�·��
     path = pathsCache[levelId];
     CCLOG("Path for level %d:", levelId);
     for (const auto& point : path) {
@@ -126,24 +147,21 @@ void GameManager::initPath()
     }
     CCLOG("%f", currentScene->tileMap->getMapSize().height);
     for (const auto& gridPoint : path) {
-        // ʹ�� gridToScreenCenter ��������������תΪ��Ļ����
         screenPath.push_back(gridToScreenCenter(gridPoint));
         float x = gridToScreenCenter(gridPoint).x;
         float y = gridToScreenCenter(gridPoint).y;
         CCLOG("ScreenPoint: (%f, %f)", x, y);
     }
 }
-//��ȡ���йؿ�·��
+// 从 JSON 配置中读取某一关卡的路径数据，并缓存到 pathsCache / ScreenPaths
 bool GameManager::loadPathForLevel(int levelId, const std::string& filePath)
 {
-    // ����Ѿ����ع��ùؿ���·������ֱ�ӷ���
     if (pathsCache.find(levelId) != pathsCache.end()) {
         return true;
     }
 
-    // ���ļ��ж�ȡ JSON ����
     std::string fileContent = cocos2d::FileUtils::getInstance()->getStringFromFile(filePath);
-    if (fileContent.empty()) { // ����ļ��Ƿ��ȡ�ɹ�
+    if (fileContent.empty()) {
         CCLOG("Failed to load JSON file: %s", filePath.c_str());
         return false;
     }
@@ -151,59 +169,54 @@ bool GameManager::loadPathForLevel(int levelId, const std::string& filePath)
     rapidjson::Document document;
     document.Parse(fileContent.c_str());
 
-    // ��� JSON ��ʽ�Ƿ���Ч
     if (document.HasParseError() || !document.IsObject()) {
         CCLOG("Failed to parse JSON or invalid format: %s", filePath.c_str());
         return false;
     }
 
-    // ���� JSON ������ȡָ���ؿ���·��
     for (auto& level : document.GetObject()) {
-        int levelIdInFile = std::stoi(level.name.GetString()); // ��ȡ�ļ��еĹؿ����
-        if (levelIdInFile == levelId) { // ƥ��ؿ����
+        int levelIdInFile = std::stoi(level.name.GetString());
+        if (levelIdInFile == levelId) {
 
-            if (!level.value.IsArray()) { // ���·�������Ƿ�������
+            if (!level.value.IsArray()) {
                 CCLOG("Path data for level %d is not an array.", levelId);
                 return false;
             }
 
-            const auto& points = level.value.GetArray(); // ·��������
+            const auto& points = level.value.GetArray();
             std::vector<cocos2d::Vec2> path;
 
-            // ʹ���������������
             for (rapidjson::Value::ConstValueIterator it = points.Begin(); it != points.End(); ++it) {
-                if (!it->IsArray() || it->Size() != 2) { // ����ĸ�ʽ
+                if (!it->IsArray() || it->Size() != 2) {
                     CCLOG("Invalid point format in level %d.", levelId);
                     continue;
                 }
 
                 float x = (*it)[0].GetFloat();
                 float y = (*it)[1].GetFloat();
-                path.emplace_back(x, y); // ת��Ϊ Vec2 ������·��
+                path.emplace_back(x, y);
             }
 
-            if (path.empty()) { // ���·���Ƿ�Ϊ��
+            if (path.empty()) {
                 CCLOG("No valid points found for level %d.", levelId);
                 return false;
             }
 
-            pathsCache[levelId] = path; // ����·������
-            // ��������·����
+            pathsCache[levelId] = path;
             for (const auto& point : pathsCache[levelId]) {
-                CCLOG("Grid Point: (%f, %f)", point.x, point.y);  // �����������
+                CCLOG("Grid Point: (%f, %f)", point.x, point.y);
                 Vec2 screenCenter = gridToScreenCenter(point);
-                ScreenPaths[levelId].emplace_back(screenCenter);  // �洢���ĵ���Ļ����
-                CCLOG("Center Screen Point: (%f, %f)", screenCenter.x, screenCenter.y);  // �����Ļ����
+                ScreenPaths[levelId].emplace_back(screenCenter);
+                CCLOG("Center Screen Point: (%f, %f)", screenCenter.x, screenCenter.y);
             }
-            return true; // ���سɹ�
+            return true;
         }
     }
 
     CCLOG("Path for level %d not found in file: %s", levelId, filePath.c_str());
-    return false; // δ�ҵ��ùؿ�·��
+    return false;
 }
-/*****************�������**********************/
-//���ع���ͼ����Դ
+// 预加载所有怪物相关的帧动画资源，避免战斗过程中卡顿
 void GameManager::loadMonsterResources() {
     SpriteFrameCache::getInstance()->addSpriteFramesWithFile("Monsters/pig.plist");
     SpriteFrameCache::getInstance()->addSpriteFramesWithFile("Monsters/yellowbat.plist");
@@ -312,20 +325,25 @@ void GameManager::loadMonsterResources() {
         CCLOG("Failed to load SpriteFrame 'BossSheep_1.png'.");
     }
 }
-//����������������
+// 创建单个怪物并加入场景，可用于正常刷怪或读档恢复
 void GameManager::produceMonsters(const std::string monsterName, const int startIndex, int health, bool pause) {
     Music::getInstance()->born_music();
     if (startIndex == 0)
         playSpawnEffect(screenPath[0]);
-    // �������ﲢ���ӵ�����
     auto Monster = Monster::create(monsterName, screenPath, startIndex, pause);
     if (!Monster) {
         CCLOG("Failed to create monster.");
         return;
     }
-    monsters.push_back(Monster); // ���浽�����б� 
+    monsters.push_back(Monster);
     CCLOG("");
-    currentScene->addChild(Monster);
+    // 由事件通知场景把怪物节点挂到合适的位置/层级上
+    auto bus = carrot::core::EventBusProvider::Get();
+    if (bus) {
+        carrot::gameplay::events::MonsterSpawnedEvent evt{};
+        evt.monster = Monster;
+        bus->Publish(carrot::gameplay::events::kMonsterSpawnedEventId, evt);
+    }
     Monster->setPause(pause);
     CCLOG("MONSTER PAUSE  %d", Monster->getPause());
     if (health != -1)
@@ -338,13 +356,11 @@ void GameManager::produceMonsters(const std::string monsterName, const int start
     Monster->SpecialAttack();
     }
 }
-//���޲�����������
+// 从 JSON 文件中读取某个关卡的全部波次配置
 void GameManager::loadMonsterWaveConfig(const std::string& filename, const std::string& levelName) {
-    // �� JSON �ļ�
     std::string path = FileUtils::getInstance()->fullPathForFilename(filename);
     std::string fileContent = FileUtils::getInstance()->getStringFromFile(path);
 
-    // ʹ�� rapidjson �����ļ�����
     rapidjson::Document doc;
     doc.Parse(fileContent.c_str());
 
@@ -352,28 +368,21 @@ void GameManager::loadMonsterWaveConfig(const std::string& filename, const std::
         CCLOG("Error parsing JSON file: %s", filename.c_str());
         return;
     }
-    // ����Ƿ����ָ���ؿ�������
     if (doc.HasMember(levelName.c_str())) {
         const rapidjson::Value& waves = doc[levelName.c_str()];
         for (rapidjson::SizeType i = 0; i < waves.Size(); ++i) {
             const rapidjson::Value& wave = waves[i];
             WaveConfig waveConfig;
-            // ��ȡ���ﲨ��
             waveConfig.wave = wave["wave"].GetInt();
-            // ��ȡ��������
             waveConfig.monsterName = wave["monsterName"].GetString();
 
-            // ��ȡ��������
             waveConfig.count = wave["count"].GetInt();
 
-            // ��ȡ���ɼ��
             const rapidjson::Value& spawnInterval = wave["spawnInterval"];
             waveConfig.spawnInterval[0] = spawnInterval[0].GetFloat();
             waveConfig.spawnInterval[1] = spawnInterval[1].GetFloat();
-            // ���Ӳ�����
             waveConfigs.push_back(waveConfig);
             AllWaveNum = waveConfigs.size();
-            // ��ӡ����������Ϣ
             CCLOG("Wave %d - Monster: %s, Count: %d, Spawn Interval: %.2f - %.2f",
                 waveConfigs.size(),
                 waveConfig.monsterName.c_str(),
@@ -392,105 +401,85 @@ void GameManager::loadMonsterWaveConfig(const std::string& filename, const std::
     }
     CCLOG("All Num %d ", AllMonsterNum);
 }
-//����һ������
+// 按照一条波次配置，利用调度器在一段时间内依次生成该波全部怪物
 void GameManager::produceMonsterWave(const WaveConfig& waveConfig) {
-    // ÿһ����������ɺ���
     float delay = 0;
     CCLOG("%d   %d", waveIndex,AllWaveNum);
     for (int i = 0; i < waveConfig.count; ++i) {
-        // �������ʱ��
         delay += cocos2d::RandomHelper::random_real(waveConfig.spawnInterval[0], waveConfig.spawnInterval[1]);
 
-        // �ӳ����ɹ��ע���ӳٵ�ʱ��������ڵ�ǰʱ���
         cocos2d::Director::getInstance()->getScheduler()->schedule([=](float) {
             produceMonsters(waveConfig.monsterName, 0, -1, false);
             }, this, 0, 0, delay, false, "produceMonster" + std::to_string(i));
     }
 }
-//���ɹ��޲�
+// 入口：开始整局战斗的刷怪流程，会按固定间隔推进到下一波
 void GameManager::startMonsterWaves() {
     CCLOG("Starting wave %d", waveIndex);
-    produceMonsterWave(waveConfigs[waveIndex]); // ���ɵ�ǰ���Ĺ���
+    produceMonsterWave(waveConfigs[waveIndex]);
     cocos2d::Director::getInstance()->getScheduler()->schedule([this](float) {
         if (waveIndex >= waveConfigs.size() - 1) {
             CCLOG("All waves are complete.");
-            cocos2d::Director::getInstance()->getScheduler()->unschedule("startWave", this); // ֹͣ������
+            cocos2d::Director::getInstance()->getScheduler()->unschedule("startWave", this);
             return;
         }
-        ++waveIndex; // ������һ��
+        ++waveIndex;
         CCLOG("Starting wave %d", waveIndex);
-        produceMonsterWave(waveConfigs[waveIndex]); // ���ɵ�ǰ���Ĺ���
+        produceMonsterWave(waveConfigs[waveIndex]);
 
-        }, this, 15.0f, false, "startWave"); // ÿ�� 15 �����һ��
+        }, this, 15.0f, false, "startWave");
 }
-//�����볡��Ч
 void GameManager::playSpawnEffect(const cocos2d::Vec2& spawnPosition) {
-    // 1. ����һ����ʱ�Ķ������� (�������ڹ���)
-    auto spawnEffect = cocos2d::Sprite::create("Monsters/monster_start_1.png"); // �����ĵ�һ֡
-    spawnEffect->setPosition(spawnPosition); // ������ʾ������λ��
-    currentScene->addChild(spawnEffect); // �Ѷ�������ӵ�����
-    // 2. ���ض�����֡
-    cocos2d::Vector<cocos2d::SpriteFrame*> frames;
-    frames.pushBack(cocos2d::SpriteFrame::create("Monsters/monster_start_1.png", cocos2d::Rect(0, 0, 64, 64)));
-    frames.pushBack(cocos2d::SpriteFrame::create("Monsters/monster_start_2.png", cocos2d::Rect(0, 0, 64, 64)));
-    // 3. ���� 2 ֡�Ķ��� (0.2s ÿ֡)
-    auto animation = cocos2d::Animation::createWithSpriteFrames(frames, 0.2f);
-    auto animate = cocos2d::Animate::create(animation);
-    // 4. ѭ������ 2 ��
-    auto repeatAnimation = cocos2d::Repeat::create(animate, 2);
-    // 5. ����������ɺ��Ƴ������ʱ��������
-    auto removeEffect = cocos2d::CallFunc::create([spawnEffect]() {
-        spawnEffect->removeFromParent(); // �Ƴ���������
-        });
-    // 6. �������� (���Ŷ��� + �Ƴ�)
-    spawnEffect->setScale(1.5f); // �Ŵ󶯻�
-    auto sequence = cocos2d::Sequence::create(repeatAnimation, removeEffect, nullptr);
-    spawnEffect->runAction(sequence); // ���ж���
+    auto bus = carrot::core::EventBusProvider::Get();
+    if (!bus) {
+        CCLOG("GameManager: EventBus not available, spawn effect event not published");
+        return;
+    }
+    carrot::gameplay::events::SpawnEffectRequestedEvent evt{};
+    evt.x = spawnPosition.x;
+    evt.y = spawnPosition.y;
+    bus->Publish(carrot::gameplay::events::kSpawnEffectRequestedEventId, evt);
 }
-//���չ��޵����յ��ʱ����źţ��������ﵽ���յ����߼�
+// 处理“怪物走到终点”的自定义事件：对萝卜扣血并销毁怪物
 void GameManager::onMonsterPathComplete(cocos2d::EventCustom* event)
 {
-    // ���¼��� userdata ��ȡ���޶���
     Monster* monster = static_cast<Monster*>(event->getUserData());
 
     if (monster) {
         CCLOG("Monster has completed the path. Perform further actions here.");
-        if (monster->getHealth() > 0)//������Ѫ�͹���
+        if (monster->getHealth() > 0)
         {
             monster->setHealth(0);
             carrot->getDamage(monster->getDamage());
             CCLOG("carrot'HP    %d", carrot->getHP());
         }
-        monster->toDie(currentScene);  //��������
+        auto bus = carrot::core::EventBusProvider::Get();
+        if (bus) {
+            carrot::gameplay::events::MonsterDiedEvent evt{};
+            evt.monster = monster;
+            bus->Publish(carrot::gameplay::events::kMonsterDiedEventId, evt);
+        }
     }
 }
-//��������
+// 清理当前所有怪物节点及其动作，用于重新开始或退出关卡
 void GameManager::ClearMonsters()
 {
-    // ���� monsters ��һ�� std::vector<Sprite*>
     for (auto monster : monsters) {
-        // �Ӹ��ڵ����Ƴ�����
         if (monster->getParent()) {
             monster->getParent()->removeChild(monster);
         }
         monster->stopAllActions();
-        // �ͷž��������ڴ�
         monster->release();
     }
-    // ��� vector
     monsters.clear();
 }
 
-/*****************�浵��������**********************/
-//���ݴ浵��ʼ��
 bool GameManager::loadGameData(const std::string& fileName) {
     waveConfigs.clear();
     WaveConfig waveConfig;
-    // 1. �����ļ�·������д·����
     std::string filePath = cocos2d::FileUtils::getInstance()->getWritablePath() + fileName;
     CCLOG("���ڼ��ش浵�ļ�: %s", filePath.c_str());
 
-    // 2. ��ȡ�ļ�����
     std::ifstream ifs(filePath);
     if (!ifs.is_open()) {
         CCLOG("�޷��򿪴浵�ļ���%s", filePath.c_str());
@@ -498,19 +487,17 @@ bool GameManager::loadGameData(const std::string& fileName) {
     }
 
     std::stringstream buffer;
-    buffer << ifs.rdbuf();  // ��ȡ�ļ����ݵ��ַ���
+    buffer << ifs.rdbuf();
     std::string fileContent = buffer.str();
     ifs.close();
     CCLOG("�ļ�����: %s", fileContent.c_str());
 
-    // 3. ʹ�� RapidJSON ���� JSON
     rapidjson::Document document;
     if (document.Parse(fileContent.c_str()).HasParseError()) {
         CCLOG("JSON ��������");
         return false;
     }
 
-    // 4. ��ȡ��һ����: livemonsters
     if (document.HasMember("livemonsters") && document["livemonsters"].IsArray()) {
         const rapidjson::Value& livingMonsters = document["livemonsters"];
         for (rapidjson::SizeType i = 0; i < livingMonsters.Size(); ++i) {
@@ -519,7 +506,6 @@ bool GameManager::loadGameData(const std::string& fileName) {
                 std::string monsterName = monsterData["monsterName"].GetString();
                 int pathIndex = monsterData["pathIndex"].GetInt();
                 int health = monsterData["health"].GetInt();
-                //���´�������
                 produceMonsters(monsterName, pathIndex,health,true);
                 CCLOG("readMonsters: name=%s, pathIndex=%d, health=%d", monsterName.c_str(), pathIndex, health);
                 AllMonsterNum++; 
@@ -527,30 +513,23 @@ bool GameManager::loadGameData(const std::string& fileName) {
         }
     }
 
-    // 5. ��ȡ�ڶ�����: currentWave
     if (document.HasMember("currentWave") && document["currentWave"].IsObject()) {
         const rapidjson::Value& currentWave = document["currentWave"];
         std::string monsterName = currentWave["monsterName"].GetString();
         int count = currentWave["count"].GetInt();
-            // ��ȡ��������
             waveConfig.monsterName = monsterName;
-            // ��ȡ��������
             waveConfig.count = count;
             AllMonsterNum+=count;
-            // ���Ӳ�����
             waveConfigs.push_back(waveConfig);
             CCLOG("currentWave: name=%s, count=%d", monsterName.c_str(), count);
     }
 
-    // 6. ��ȡ��������: waveIndex
     if (document.HasMember("waveIndex") && document["waveIndex"].IsInt()) {
         int waveIndex = document["waveIndex"].GetInt();
         CCLOG("currentIndex: %d", waveIndex);
-        // ��������������õ�ǰ�Ĳ�����
         this->waveIndex = waveIndex;
     }
     AllWaveNum= waveIndex+1;
-    // 7. ��ȡ���Ĳ���: upcomingWaves
     if (document.HasMember("upcomingWaves") && document["upcomingWaves"].IsArray()) {
         const rapidjson::Value& upcomingWaves = document["upcomingWaves"];
         for (rapidjson::SizeType i = 0; i < upcomingWaves.Size(); ++i) {
@@ -558,13 +537,10 @@ bool GameManager::loadGameData(const std::string& fileName) {
             if (waveData.IsObject()) {
                 std::string monsterName = waveData["monsterName"].GetString();
                 int count = waveData["count"].GetInt();
-                // ��ȡ��������
                 waveConfig.monsterName = monsterName;
-                // ��ȡ��������
                 waveConfig.count = count;
                AllMonsterNum += count;
                 AllWaveNum++;
-                // ���Ӳ�����
                 waveConfigs.push_back(waveConfig);
                 CCLOG("upComingWave: name=%s, count=%d", monsterName.c_str(), count);
             }
@@ -574,17 +550,13 @@ bool GameManager::loadGameData(const std::string& fileName) {
     CCLOG("Read All Data!");
     return true;
 }
-//�������ݴ浵����
 void GameManager::saveMonstersDataToJson(const std::string& fileName) {
-    // ���� JSON �ĵ�����
     rapidjson::Document document;
     document.SetObject();
-    // ��ȡ��ǰ��������
     int currentWaveIndex = getCurrentWaveIndex();
-    // 1. ������ŵĹ���
     rapidjson::Value livingMonsters(rapidjson::kArrayType);
     for (auto* monster : monsters) {
-        if (monster->checkLive()) {  // �жϹ����Ƿ����
+        if (monster->checkLive()) {
             rapidjson::Value monsterData(rapidjson::kObjectType);
             // monsterName
             monsterData.AddMember("monsterName", rapidjson::Value(monster->getMonsterName().c_str(), document.GetAllocator()), document.GetAllocator());
@@ -592,13 +564,10 @@ void GameManager::saveMonstersDataToJson(const std::string& fileName) {
             monsterData.AddMember("pathIndex", monster->getPathIndex(), document.GetAllocator());
             // health
             monsterData.AddMember("health", monster->getHealth(), document.GetAllocator());
-            // �������������ӵ�������
             livingMonsters.PushBack(monsterData, document.GetAllocator());
         }
     }
     document.AddMember("livemonsters", livingMonsters, document.GetAllocator());
-    // 2. ���浱ǰ����Ϣ
-    // ���㵱ǰ��ʣ��Ĺ�������
     int totalMonstersCount = 0;
     for (int i = 0; i <= currentWaveIndex; ++i) {
         totalMonstersCount += waveConfigs[i].count;
@@ -608,28 +577,21 @@ void GameManager::saveMonstersDataToJson(const std::string& fileName) {
     currentWave.AddMember("monsterName", rapidjson::Value(waveConfigs[currentWaveIndex].monsterName.c_str(), document.GetAllocator()), document.GetAllocator());
     currentWave.AddMember("count", remainingCount, document.GetAllocator());
     document.AddMember("currentWave", currentWave, document.GetAllocator());
-    //3.���浱ǰ���ı��
-    document.AddMember("waveIndex", currentWaveIndex, document.GetAllocator()); // ���뵱ǰ������
-    // 4. ����������Ĳ���Ϣ
+    document.AddMember("waveIndex", currentWaveIndex, document.GetAllocator());
     rapidjson::Value upcomingWaves(rapidjson::kArrayType);
     for (size_t i = currentWaveIndex + 1; i < waveConfigs.size(); ++i) {
         rapidjson::Value waveData(rapidjson::kObjectType);
         waveData.AddMember("monsterName", rapidjson::Value(waveConfigs[i].monsterName.c_str(), document.GetAllocator()), document.GetAllocator());
         waveData.AddMember("count", waveConfigs[i].count, document.GetAllocator());
-        // ��ÿ�����������ӵ�������
         upcomingWaves.PushBack(waveData, document.GetAllocator());
     }
     document.AddMember("upcomingWaves", upcomingWaves, document.GetAllocator());
-    // ��ȡ��д·��
-    std::string writablePath = FileUtils::getInstance()->getWritablePath();  // ��ȡ��д·��
-    // �����ļ�·��
+    std::string writablePath = FileUtils::getInstance()->getWritablePath();
     std::string filePath = writablePath + fileName;
-    // �����д�뵽ָ���ļ�·��
     rapidjson::StringBuffer buffer;
     rapidjson::Writer<rapidjson::StringBuffer> writer(buffer);
     document.Accept(writer);
-    // д���ļ�
-    std::ofstream ofs(filePath);  // ʹ�ÿ�д·��
+    std::ofstream ofs(filePath);
     if (ofs.is_open()) {
         ofs << buffer.GetString();
         ofs.close();
@@ -639,59 +601,86 @@ void GameManager::saveMonstersDataToJson(const std::string& fileName) {
         CCLOG("�浵ʧ�ܣ�%s", filePath.c_str());
     }
 }
-/*****************�ܲ����**********************/
-//�ܲ�������Ч
 void GameManager::doudong() {
     if (!carrot) {
         return;
     }
     if (carrot->getHP() == carrot->getMaxHP()) {
-        carrot->setVisible(false);
-        auto b = cocos2d::Sprite::create();
-        if (!b) {
-            CCLOG("Failed to create death sprite.");
+        auto bus = carrot::core::EventBusProvider::Get();
+        if (!bus) {
+            CCLOG("GameManager: EventBus not available, carrot shake event not published");
             return;
         }
-        b->setPosition(dst1[levelId - 1]);  // ����������������λ���������ͬ
-        b->setScale(1.5f);
-        currentScene->addChild(b);
-        // �����߼�
-        cocos2d::Vector<cocos2d::SpriteFrame*> frames;
-        for (int i = 0; i <= 2; ++i) {
-            std::string frameName = "Carrot/dou_" + std::to_string(i) + ".png";
-            auto frame = cocos2d::SpriteFrame::create(frameName, cocos2d::Rect(0, 0, 85, 72));
-            if (frame) {
-                frames.pushBack(frame);
-            }
-            else {
-                CCLOG("Failed to load frame: %s", frameName.c_str());
-            }
-        }
-        if (frames.empty()) {
-            CCLOG("No frames found for bong, skipping.");
-            return;
-        }
-        auto animation = cocos2d::Animation::createWithSpriteFrames(frames, 0.5f);
-        auto animate = cocos2d::Animate::create(animation);
-        // 7. ������ɺ�ɾ����ʱ��������������
-        auto onDeathComplete = cocos2d::CallFunc::create([b]() {
-            CCLOG("Death animation completed, removing death sprite.");
-            b->removeFromParent();
-            });
-        Music::getInstance()->tuSound();
-        b->runAction(cocos2d::Sequence::create(animate, onDeathComplete, nullptr));
-        carrot->setVisible(true);
+        carrot::gameplay::events::CarrotShakeRequestedEvent evt{};
+        // 使用当前关卡目标点作为抖动特效位置
+        evt.x = dst1[levelId - 1].x;
+        evt.y = dst1[levelId - 1].y;
+        bus->Publish(carrot::gameplay::events::kCarrotShakeRequestedEventId, evt);
     }
 }
-//��ʼ���ܲ�
 void GameManager::initCarrot() {
-    // �����ܲ���Ѫ��Ϊ10
     carrot = Carrot::create(10, dst1[levelId - 1], dst2[levelId - 1]);
-    currentScene->addChild(carrot); // ֱ�ӽ� Carrot ��Ϊһ��Node�����ӵ�������
+    currentScene->addChild(carrot);
     CCLOG("CARROT READY!");
 }
 
-/*****************���������**********************/
+// 所有加减金币操作从这里入口，再统一走 SetMoney
+void GameManager::ChangeMoney(int delta) {
+    SetMoney(money + delta);
+}
+
+// 设置金币并按需通知监听者，保持 HUD 等同步
+void GameManager::SetMoney(int value, bool publishEvent) {
+    int delta = value - money;
+    money = value;
+    if (publishEvent) {
+        PublishMoneyChangedEvent(delta);
+    }
+}
+
+// 发布金币变化事件，UI 与其他系统可通过事件解耦
+void GameManager::PublishMoneyChangedEvent(int delta) {
+    carrot::gameplay::events::MoneyChangedEvent evt{};
+    evt.delta = delta;
+    evt.current = money;
+    auto bus = carrot::core::EventBusProvider::Get();
+    if (bus) {
+        bus->Publish(carrot::gameplay::events::kMoneyChangedEventId, evt);
+    }
+}
+
+// 胜利事件只发送一次，Scene/UI 通过订阅获知
+void GameManager::PublishGameWonEvent() {
+    if (hasGameWon || hasGameLost) {
+        return;
+    }
+    hasGameWon = true;
+    carrot::gameplay::events::GameWonEvent evt{};
+    evt.currentWave = getCurrentWaveNum();
+    evt.totalWave = getAllWaveNum();
+    evt.levelId = levelId;
+    auto bus = carrot::core::EventBusProvider::Get();
+    if (bus) {
+        bus->Publish(carrot::gameplay::events::kGameWonEventId, evt);
+    }
+}
+
+// 失败事件也只发送一次，避免 Scene/UI 轮询
+void GameManager::PublishGameLostEvent() {
+    if (hasGameLost || hasGameWon) {
+        return;
+    }
+    hasGameLost = true;
+    carrot::gameplay::events::GameLostEvent evt{};
+    evt.currentWave = getCurrentWaveNum();
+    evt.totalWave = getAllWaveNum();
+    evt.levelId = levelId;
+    auto bus = carrot::core::EventBusProvider::Get();
+    if (bus) {
+        bus->Publish(carrot::gameplay::events::kGameLostEventId, evt);
+    }
+}
+
 void GameManager::registerListener() {
     _listener = cocos2d::EventListenerCustom::create("monster_path_complete",
         CC_CALLBACK_1(GameManager::onMonsterPathComplete, this));
@@ -717,11 +706,8 @@ void GameManager::stopAllSchedulers() {
     CCLOG("Stopping all schedulers for GameManager.");
     cocos2d::Director::getInstance()->getScheduler()->unscheduleAllForTarget(this);
 }
-//�߸�����ת��ͼ����Ĺ��ߺ���
 Vec2 GameManager::gridToScreenCenter(const Vec2& gridPoint) {
-    // �� tileMap ��ȡ��ͼ�߶ȣ�����������
     float mapHeight = currentScene->tileMap->getMapSize().height;
-    // ת��Ϊ��Ļ����
     float screenX = gridPoint.x * (currentScene->tileSize.height) + (currentScene->tileSize.width) / 2;
     float screenY = (mapHeight - gridPoint.y - 1) * (currentScene->tileSize.height) + (currentScene->tileSize.height) / 2;
     return Vec2(screenX, screenY);

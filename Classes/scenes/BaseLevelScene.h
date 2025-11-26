@@ -13,6 +13,7 @@
 #include"core/state/PausedState.h"
 #include"core/state/MenuState.h"
 #include"core/state/LevelSelectState.h"
+#include "core/EventBusProvider.h"
 
 USING_NS_CC;
 
@@ -52,6 +53,13 @@ private:
     bool isDoubleSpeed = false;                              // ��ʼ��Ϊfalse����ʾ��Ϸ��ʼ���Ƕ�����״̬
     bool isGamePaused = false;
     bool hasGameOverTriggered = false;
+    std::shared_ptr<carrot::core::Subscription> gameWonSubscription;
+    std::shared_ptr<carrot::core::Subscription> gameLostSubscription;
+    std::shared_ptr<carrot::core::Subscription> monsterDiedSubscription;
+    std::shared_ptr<carrot::core::Subscription> spawnEffectSubscription;
+    std::shared_ptr<carrot::core::Subscription> carrotShakeSubscription;
+    std::shared_ptr<carrot::core::Subscription> monsterSpawnSubscription;
+
 
     //�������
     std::vector<Sprite*>remove_table;                        //removeʱ�ķ���
@@ -63,7 +71,6 @@ private:
 
     Scheduler* scheduler = Director::getInstance()->getScheduler();
     float time_total=0;                                      //�����ܲ�����
-    int money = 1000;                                        //Ǯ
 public:
     std::map<int, Tower*> towers;                            //��¼���ϵ�������Ϣ
     std::map<int, Obstacle*> Obstacles;                      //�ϰ�������
@@ -72,7 +79,7 @@ public:
     char isTarget = 0;                                       //0����û�б���ǵģ�1�������ﱻ��ǣ�2�����ϰ��ﱻ���
     Cell map_data[X][Y];                                     //��ͼ����
     Sprite* lock;                                          //������־����Ϊͬһʱ��ֻ����һ���������������Խ������BaseLevelScene��
-    int getMoney()const{return money;}
+    int getMoney()const;
     virtual void update(float deltaTime) override;
     cocos2d::TMXTiledMap* tileMap = nullptr;                // ��ͼ����
     cocos2d::Size tileSize;                                 //ÿ����Ƭ�Ĵ�С
@@ -119,6 +126,11 @@ public:
     Monster* IsTargetMonster(const Vec2& pos);                   //����Ƿ��й��ﱻ����
     void transitionToMenuState();
     void transitionToLevelSelectState();
+    void registerOutcomeListeners();
+    void registerMonsterListeners();
+    void registerSpawnEffectListeners();
+    void registerCarrotShakeListeners();
+    void registerMonsterSpawnListeners();
    
 };
 #endif 

@@ -37,6 +37,10 @@ private:
     std::vector<WaveConfig> waveConfigs;                    //�洢���޲�
     int waveIndex = 0;                                      //��ǰ����
     int AllWaveNum=0;
+    static constexpr int kDefaultStartingMoney = 1000;
+    int money = kDefaultStartingMoney;
+    bool hasGameWon = false;
+    bool hasGameLost = false;
     //·��
     std::map<int, std::vector<cocos2d::Vec2>>pathsCache;     //�洢�Ѿ����ع��Ĺؿ�������·��
     std::map<int, std::vector<cocos2d::Vec2>>ScreenPaths;    //�洢�Ѿ����ع��Ĺؿ�����Ļ·��
@@ -46,9 +50,9 @@ private:
     int levelId;                                             //�ؿ����
     //�¼�������
     cocos2d::EventListenerCustom* _listener;                 //���ڼ����޵����յ���¼�
+    // �����б�（只允许通过接口对外暴露）
+    std::vector<Monster*> monsters;
 public:
-   
-    std::vector<Monster*> monsters;                          // �����б�
     void stopAllSchedulers();                                //ֹͣmanager�����е�����
     GameManager(const GameManager&) = delete;               
     GameManager& operator=(const GameManager&) = delete;     // ���ÿ����͸�ֵ
@@ -79,6 +83,12 @@ public:
     int getAllWaveNum()const { return AllWaveNum; }          //��ȡ�ܲ���
     int getCurrentWaveNum()const { return waveIndex; }       //��ȡ�ֲ���
     int getAllMonsterNum()const{return AllMonsterNum;}
+    // 提供对怪物容器的只读引用，封装内部成员
+    std::vector<Monster*>& GetMonsters() { return monsters; }
+    // 全局控制：给所有存活怪物应用一个速度倍率
+    void ApplyMonsterSpeed(float speedFactor);
+    // 技能 / 调试：立刻杀死所有存活怪物（用于清场炸弹）
+    void KillAllMonsters();
   //�����浵���
     bool loadGameData(const std::string& fileName);          //���س�ʼ��Ϸ����
     bool loadPathForLevel(int levelId, const std::string& filePath);
@@ -92,4 +102,11 @@ public:
     void Jineng1();
     Carrot* getCarrot() const { return carrot; }
     void doudong();
+    int GetMoney() const { return money; }
+    void ChangeMoney(int delta);
+    void SetMoney(int value, bool publishEvent = true);
+private:
+    void PublishMoneyChangedEvent(int delta);
+    void PublishGameWonEvent();
+    void PublishGameLostEvent();
 };
