@@ -25,6 +25,8 @@
 #include "core/EventBusProvider.h"
 #include "ui/widgets/MoneyHud.h"
 #include "gameplay/events/GameFlowEvents.h"
+#include "gameplay/events/MonsterEvents.h"
+#include "gameplay/events/CarrotEvents.h"
 using namespace rapidjson;
 using namespace ui;
 //#define DEBUG_MODE
@@ -641,6 +643,136 @@ void BaseLevelScene::registerOutcomeListeners() {
             gameover(false, evt.currentWave, evt.totalWave);
         });
 }
+
+// 订阅怪物死亡事件，在当前场景中执行具体的死亡表现（爆炸、移除等）
+void BaseLevelScene::registerMonsterListeners() {
+    auto bus = carrot::core::EventBusProvider::Get();
+    if (!bus) {
+        CCLOG("BaseLevelScene: EventBus not available, monster listeners not registered");
+        return;
+    }
+
+    monsterDiedSubscription = bus->Subscribe(
+        carrot::gameplay::events::kMonsterDiedEventId,
+        [this](const carrot::core::Event& baseEvent) {
+            const auto& evt = static_cast<const carrot::gameplay::events::MonsterDiedEvent&>(baseEvent);
+            if (evt.monster) {
+                evt.monster->toDie(this);
+            }
+        });
+}
+
+// 订阅怪物创建事件，在当前场景中把怪物节点挂到场景树上
+void BaseLevelScene::registerMonsterSpawnListeners() {
+    auto bus = carrot::core::EventBusProvider::Get();
+    if (!bus) {
+        CCLOG("BaseLevelScene: EventBus not available, monster spawn listener not registered");
+        return;
+    }
+
+    monsterSpawnSubscription = bus->Subscribe(
+        carrot::gameplay::events::kMonsterSpawnedEventId,
+        [this](const carrot::core::Event& baseEvent) {
+            const auto& evt = static_cast<const carrot::gameplay::events::MonsterSpawnedEvent&>(baseEvent);
+            if (evt.monster) {
+                this->addChild(evt.monster);
+            }
+        });
+}
+
+// 订阅怪物出生特效事件，在当前场景中创建并播放出生动画
+void BaseLevelScene::registerSpawnEffectListeners() {
+    auto bus = carrot::core::EventBusProvider::Get();
+    if (!bus) {
+        CCLOG("BaseLevelScene: EventBus not available, spawn effect listener not registered");
+        return;
+    }
+
+    spawnEffectSubscription = bus->Subscribe(
+        carrot::gameplay::events::kSpawnEffectRequestedEventId,
+        [this](const carrot::core::Event& baseEvent) {
+            const auto& evt = static_cast<const carrot::gameplay::events::SpawnEffectRequestedEvent&>(baseEvent);
+            cocos2d::Vec2 spawnPosition(evt.x, evt.y);
+
+            auto spawnEffect = cocos2d::Sprite::create("Monsters/monster_start_1.png");
+            if (!spawnEffect) {
+                CCLOG("BaseLevelScene: Failed to create spawn effect sprite.");
+                return;
+            }
+            spawnEffect->setPosition(spawnPosition);
+            this->addChild(spawnEffect);
+
+            cocos2d::Vector<cocos2d::SpriteFrame*> frames;
+            frames.pushBack(cocos2d::SpriteFrame::create("Monsters/monster_start_1.png", cocos2d::Rect(0, 0, 64, 64)));
+            frames.pushBack(cocos2d::SpriteFrame::create("Monsters/monster_start_2.png", cocos2d::Rect(0, 0, 64, 64)));
+
+            auto animation = cocos2d::Animation::createWithSpriteFrames(frames, 0.2f);
+            auto animate = cocos2d::Animate::create(animation);
+            auto repeatAnimation = cocos2d::Repeat::create(animate, 2);
+            auto removeEffect = cocos2d::CallFunc::create([spawnEffect]() {
+                spawnEffect->removeFromParent();
+            });
+            spawnEffect->setScale(1.5f);
+            auto sequence = cocos2d::Sequence::create(repeatAnimation, removeEffect, nullptr);
+            spawnEffect->runAction(sequence);
+        });
+}
+
+// 订阅萝卜抖动请求事件，在当前场景中播放抖动动画
+void BaseLevelScene::registerCarrotShakeListeners() {
+    auto bus = carrot::core::EventBusProvider::Get();
+    if (!bus) {
+        CCLOG("BaseLevelScene: EventBus not available, carrot shake listener not registered");
+        return;
+    }
+
+    carrotShakeSubscription = bus->Subscribe(
+        carrot::gameplay::events::kCarrotShakeRequestedEventId,
+        [this](const carrot::core::Event& baseEvent) {
+            const auto& evt = static_cast<const carrot::gameplay::events::CarrotShakeRequestedEvent&>(baseEvent);
+            cocos2d::Vec2 pos(evt.x, evt.y);
+
+            // 隐藏原萝卜，播放抖动动画（沿用原先 GameManager::doudong 的实现）
+            if (manager && manager->getCarrot()) {
+                manager->getCarrot()->setVisible(false);
+            }
+
+            auto b = cocos2d::Sprite::create();
+            if (!b) {
+                CCLOG("BaseLevelScene: Failed to create carrot shake sprite.");
+                return;
+            }
+            b->setPosition(pos);
+            b->setScale(1.5f);
+            this->addChild(b);
+
+            cocos2d::Vector<cocos2d::SpriteFrame*> frames;
+            for (int i = 0; i <= 2; ++i) {
+                std::string frameName = "Carrot/dou_" + std::to_string(i) + ".png";
+                auto frame = cocos2d::SpriteFrame::create(frameName, cocos2d::Rect(0, 0, 85, 72));
+                if (frame) {
+                    frames.pushBack(frame);
+                } else {
+                    CCLOG("BaseLevelScene: Failed to load carrot shake frame: %s", frameName.c_str());
+                }
+            }
+            if (frames.empty()) {
+                CCLOG("BaseLevelScene: No frames found for carrot shake, skipping.");
+                return;
+            }
+            auto animation = cocos2d::Animation::createWithSpriteFrames(frames, 0.5f);
+            auto animate = cocos2d::Animate::create(animation);
+            auto onComplete = cocos2d::CallFunc::create([this, b]() {
+                CCLOG("Carrot shake animation completed, removing sprite.");
+                b->removeFromParent();
+                if (manager && manager->getCarrot()) {
+                    manager->getCarrot()->setVisible(true);
+                }
+            });
+            Music::getInstance()->tuSound();
+            b->runAction(cocos2d::Sequence::create(animate, onComplete, nullptr));
+        });
+}
 void BaseLevelScene::CountDown(std::function<void()> onComplete)
 {
     auto countBackground = Sprite::create("CarrotGuardRes/UI/countBackground.png");
@@ -725,8 +857,11 @@ bool BaseLevelScene::initWithLevel(int level)
     manager->initLevel(level, !isNewGame[levelId - 1]);
     initUI();
     registerOutcomeListeners();
-
-
+    registerMonsterListeners();
+    registerSpawnEffectListeners();
+    registerCarrotShakeListeners();
+    registerMonsterSpawnListeners();
+    registerSpawnEffectListeners();
     plantsLayer = Layer::create();
     this->addChild(plantsLayer, 10);
     addMouseListener();
@@ -775,7 +910,7 @@ void BaseLevelScene::update(float deltaTime) {
     for (auto it = towers.begin(); it != towers.end(); it++) {
 
         if (it->second->interval >= it->second->interval_table[it->second->GetIndex()]) {
-            it->second->attack(this, GameManager::getInstance()->monsters, isTarget, tar_m, tar_o,tower_jiasu);
+            it->second->attack(this, GameManager::getInstance()->GetMonsters(), isTarget, tar_m, tar_o,tower_jiasu);
             continue;
         }
 
@@ -974,7 +1109,8 @@ void BaseLevelScene::PlantMenuGone(Vec2 position)
 }
 Monster* BaseLevelScene::IsTargetMonster(const Vec2& pos)
 {
-    for (auto it = GameManager::getInstance()->monsters.begin(); it != GameManager::getInstance()->monsters.end(); it++) {
+    auto& monsters = GameManager::getInstance()->GetMonsters();
+    for (auto it = monsters.begin(); it != monsters.end(); it++) {
         if ((*it)->getHealth() <= 0)continue;
         auto m_pos = (*it)->getPosition();
         auto m_size = (*it)->getContentSize();

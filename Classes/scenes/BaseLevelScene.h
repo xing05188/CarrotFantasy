@@ -55,6 +55,10 @@ private:
     bool hasGameOverTriggered = false;
     std::shared_ptr<carrot::core::Subscription> gameWonSubscription;
     std::shared_ptr<carrot::core::Subscription> gameLostSubscription;
+    std::shared_ptr<carrot::core::Subscription> monsterDiedSubscription;
+    std::shared_ptr<carrot::core::Subscription> spawnEffectSubscription;
+    std::shared_ptr<carrot::core::Subscription> carrotShakeSubscription;
+    std::shared_ptr<carrot::core::Subscription> monsterSpawnSubscription;
 
 
     //�������
@@ -123,6 +127,10 @@ public:
     void transitionToMenuState();
     void transitionToLevelSelectState();
     void registerOutcomeListeners();
+    void registerMonsterListeners();
+    void registerSpawnEffectListeners();
+    void registerCarrotShakeListeners();
+    void registerMonsterSpawnListeners();
    
 };
 #endif 

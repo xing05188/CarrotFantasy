@@ -10,6 +10,8 @@
 #include "EventBusProvider.h"
 #include "../gameplay/events/MoneyEvents.h"
 #include "../gameplay/events/GameFlowEvents.h"
+#include "../gameplay/events/MonsterEvents.h"
+#include "../gameplay/events/CarrotEvents.h"
 
 USING_NS_CC;
 extern int DeadCount;
@@ -85,12 +87,16 @@ void GameManager::ApplyMonsterSpeed(float speedFactor) {
 }
 
 void GameManager::KillAllMonsters() {
+    auto bus = carrot::core::EventBusProvider::Get();
     for (auto* monster : monsters) {
         if (!monster) continue;
         if (monster->getHealth() <= 0) continue;
         monster->setHealth(0);
-        // 使用当前绑定的场景来执行死亡表现
-        monster->toDie(currentScene);
+        if (bus) {
+            carrot::gameplay::events::MonsterDiedEvent evt{};
+            evt.monster = monster;
+            bus->Publish(carrot::gameplay::events::kMonsterDiedEventId, evt);
+        }
     }
 }
 
@@ -331,7 +337,13 @@ void GameManager::produceMonsters(const std::string monsterName, const int start
     }
     monsters.push_back(Monster);
     CCLOG("");
-    currentScene->addChild(Monster);
+    // 由事件通知场景把怪物节点挂到合适的位置/层级上
+    auto bus = carrot::core::EventBusProvider::Get();
+    if (bus) {
+        carrot::gameplay::events::MonsterSpawnedEvent evt{};
+        evt.monster = Monster;
+        bus->Publish(carrot::gameplay::events::kMonsterSpawnedEventId, evt);
+    }
     Monster->setPause(pause);
     CCLOG("MONSTER PAUSE  %d", Monster->getPause());
     if (health != -1)
@@ -417,23 +429,16 @@ void GameManager::startMonsterWaves() {
 
         }, this, 15.0f, false, "startWave");
 }
-// 在指定位置播放怪物出生特效，仅用于表现层效果
 void GameManager::playSpawnEffect(const cocos2d::Vec2& spawnPosition) {
-    auto spawnEffect = cocos2d::Sprite::create("Monsters/monster_start_1.png");
-    spawnEffect->setPosition(spawnPosition);
-    currentScene->addChild(spawnEffect);
-    cocos2d::Vector<cocos2d::SpriteFrame*> frames;
-    frames.pushBack(cocos2d::SpriteFrame::create("Monsters/monster_start_1.png", cocos2d::Rect(0, 0, 64, 64)));
-    frames.pushBack(cocos2d::SpriteFrame::create("Monsters/monster_start_2.png", cocos2d::Rect(0, 0, 64, 64)));
-    auto animation = cocos2d::Animation::createWithSpriteFrames(frames, 0.2f);
-    auto animate = cocos2d::Animate::create(animation);
-    auto repeatAnimation = cocos2d::Repeat::create(animate, 2);
-    auto removeEffect = cocos2d::CallFunc::create([spawnEffect]() {
-        spawnEffect->removeFromParent();
-        });
-    spawnEffect->setScale(1.5f);
-    auto sequence = cocos2d::Sequence::create(repeatAnimation, removeEffect, nullptr);
-    spawnEffect->runAction(sequence);
+    auto bus = carrot::core::EventBusProvider::Get();
+    if (!bus) {
+        CCLOG("GameManager: EventBus not available, spawn effect event not published");
+        return;
+    }
+    carrot::gameplay::events::SpawnEffectRequestedEvent evt{};
+    evt.x = spawnPosition.x;
+    evt.y = spawnPosition.y;
+    bus->Publish(carrot::gameplay::events::kSpawnEffectRequestedEventId, evt);
 }
 // 处理“怪物走到终点”的自定义事件：对萝卜扣血并销毁怪物
 void GameManager::onMonsterPathComplete(cocos2d::EventCustom* event)
@@ -448,7 +453,12 @@ void GameManager::onMonsterPathComplete(cocos2d::EventCustom* event)
             carrot->getDamage(monster->getDamage());
             CCLOG("carrot'HP    %d", carrot->getHP());
         }
-        monster->toDie(currentScene);
+        auto bus = carrot::core::EventBusProvider::Get();
+        if (bus) {
+            carrot::gameplay::events::MonsterDiedEvent evt{};
+            evt.monster = monster;
+            bus->Publish(carrot::gameplay::events::kMonsterDiedEventId, evt);
+        }
     }
 }
 // 清理当前所有怪物节点及其动作，用于重新开始或退出关卡
@@ -596,39 +606,16 @@ void GameManager::doudong() {
         return;
     }
     if (carrot->getHP() == carrot->getMaxHP()) {
-        carrot->setVisible(false);
-        auto b = cocos2d::Sprite::create();
-        if (!b) {
-            CCLOG("Failed to create death sprite.");
+        auto bus = carrot::core::EventBusProvider::Get();
+        if (!bus) {
+            CCLOG("GameManager: EventBus not available, carrot shake event not published");
             return;
         }
-        b->setPosition(dst1[levelId - 1]);
-        b->setScale(1.5f);
-        currentScene->addChild(b);
-        cocos2d::Vector<cocos2d::SpriteFrame*> frames;
-        for (int i = 0; i <= 2; ++i) {
-            std::string frameName = "Carrot/dou_" + std::to_string(i) + ".png";
-            auto frame = cocos2d::SpriteFrame::create(frameName, cocos2d::Rect(0, 0, 85, 72));
-            if (frame) {
-                frames.pushBack(frame);
-            }
-            else {
-                CCLOG("Failed to load frame: %s", frameName.c_str());
-            }
-        }
-        if (frames.empty()) {
-            CCLOG("No frames found for bong, skipping.");
-            return;
-        }
-        auto animation = cocos2d::Animation::createWithSpriteFrames(frames, 0.5f);
-        auto animate = cocos2d::Animate::create(animation);
-        auto onDeathComplete = cocos2d::CallFunc::create([b]() {
-            CCLOG("Death animation completed, removing death sprite.");
-            b->removeFromParent();
-            });
-        Music::getInstance()->tuSound();
-        b->runAction(cocos2d::Sequence::create(animate, onDeathComplete, nullptr));
-        carrot->setVisible(true);
+        carrot::gameplay::events::CarrotShakeRequestedEvent evt{};
+        // 使用当前关卡目标点作为抖动特效位置
+        evt.x = dst1[levelId - 1].x;
+        evt.y = dst1[levelId - 1].y;
+        bus->Publish(carrot::gameplay::events::kCarrotShakeRequestedEventId, evt);
     }
 }
 void GameManager::initCarrot() {

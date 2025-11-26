@@ -50,9 +50,9 @@ private:
     int levelId;                                             //�ؿ����
     //�¼�������
     cocos2d::EventListenerCustom* _listener;                 //���ڼ����޵����յ���¼�
+    // �����б�（只允许通过接口对外暴露）
+    std::vector<Monster*> monsters;
 public:
-   
-    std::vector<Monster*> monsters;                          // �����б�
     void stopAllSchedulers();                                //ֹͣmanager�����е�����
     GameManager(const GameManager&) = delete;               
     GameManager& operator=(const GameManager&) = delete;     // ���ÿ����͸�ֵ
@@ -83,6 +83,8 @@ public:
     int getAllWaveNum()const { return AllWaveNum; }          //��ȡ�ܲ���
     int getCurrentWaveNum()const { return waveIndex; }       //��ȡ�ֲ���
     int getAllMonsterNum()const{return AllMonsterNum;}
+    // 提供对怪物容器的只读引用，封装内部成员
+    std::vector<Monster*>& GetMonsters() { return monsters; }
     // 全局控制：给所有存活怪物应用一个速度倍率
     void ApplyMonsterSpeed(float speedFactor);
     // 技能 / 调试：立刻杀死所有存活怪物（用于清场炸弹）
