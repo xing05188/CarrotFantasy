@@ -57,8 +57,6 @@ endif()
 # add cross-platforms source files and header files 
 list(APPEND GAME_SOURCE
      Classes/core/AppDelegate.cpp
-     Classes/scenes/HelloWorldScene.cpp
-     # 添加所有 .cpp 文件
      Classes/scenes/advantureScene.cpp
      Classes/scenes/BaseLevelScene.cpp
      Classes/entities/Carrot.cpp
@@ -82,12 +80,11 @@ list(APPEND GAME_SOURCE
      Classes/core/state/GameOverState.cpp
      Classes/core/state/GameFlowController.cpp
      Classes/core/state/GameFlowProvider.cpp
+     Classes/factories/MonsterFactory.cpp
      )
 
 list(APPEND GAME_HEADER
      Classes/core/AppDelegate.h
-     Classes/scenes/HelloWorldScene.h
-     # 添加所有 .h 文件
      Classes/scenes/advantureScene.h
      Classes/scenes/BaseLevelScene.h
      Classes/entities/Carrot.h
@@ -114,6 +111,7 @@ list(APPEND GAME_HEADER
      Classes/core/state/GameFlowController.h
      Classes/core/state/GameFlowProvider.h
      Classes/gameplay/events/CarrotEvents.h
+     Classes/factories/MonsterFactory.h
      )
 
 if(ANDROID)

@@ -1,4 +1,5 @@
 #include"Monster.h"
+#include"factories/MonsterFactory.h"
 
 #include"music.h"
 #include"BaseLevelScene.h"
@@ -8,46 +9,53 @@ extern float tower_jiasu;
 int DeadCount=0;
 
 
-//��̬�����������޶���
+//静态创建怪物对象
 Monster* Monster::create(const std::string& monsterName, const std::vector<Vec2>& path, int startIndex, bool pause) {
-    Monster* monster;
-    //�ж��Ƿ���Boss
-    if(monsterName.find("Boss")==0)
-    {
-        if(monsterName=="BossYellow")
-        {
-       monster=new (std::nothrow) BossYellow();//ʹ��new����������ڴ棬����һ��BossYellow����
-        }
-        else if (monsterName == "BossSheep")
-        {
-            monster = new (std::nothrow) BossSheep();//ʹ��new����������ڴ棬����һ��BossYellow����
-        }
-        else
-        {
-            CCLOG("UNKONW BOSS: %s",monsterName.c_str());
-            return nullptr;
-        }         
+    // 使用工厂模式创建怪物
+    auto factory = MonsterFactoryProvider::getFactory(monsterName);
+    if (!factory) {
+        CCLOG("Failed to get factory for monster: %s", monsterName.c_str());
+        return nullptr;
     }
-    else
-    monster = new (std::nothrow) Monster();//ʹ��new����������ڴ棬����һ��Monster����
-    if (monster && monster->initWithPath(monsterName, path, startIndex, pause))//�ж��Ƿ񴴽��ɹ��ͳ�ʼ���ɹ�
-    {
+    
+    Monster* monster = factory->createMonster(monsterName, path, startIndex, pause);
+    delete factory; // 释放工厂对象
+    
+    if (!monster) {
+        CCLOG("Failed to create monster: %s", monsterName.c_str());
+        return nullptr;
+    }
+    
+    return monster;
+}
+
+bool Monster::initializeMonsterWithHealthBar(Monster* monster, 
+                                                       const std::string& monsterName, 
+                                                       const std::vector<Vec2>& path, 
+                                                       int startIndex, 
+                                                       bool pause) {
+    // 初始化怪物
+    if (monster->initWithPath(monsterName, path, startIndex, pause)) {
         monster->autorelease();
-        //����Ѫ��
+        
+        // 创建血条
         monster->_HP = cocos2d::ui::LoadingBar::create("Monsters/HPbar.png");
-        monster->_HP->setPercent(100); // ��ʼѪ��Ϊ��Ѫ
+        monster->_HP->setPercent(100); // 初始血量为满血
         monster->_HP->setPosition(Vec2(monster->getContentSize().width / 2, monster->getContentSize().height * 1.3f));
         monster->addChild(monster->_HP, 10);
-        //����Ѫ������
+        
+        // 创建血条背景
         monster->hpback = Sprite::create("Monsters/HPBackground.png");
         monster->hpback->setPosition(Vec2(monster->getContentSize().width / 2, monster->getContentSize().height * 1.3f));
         monster->addChild(monster->hpback, 9);
+        
         monster->_HP->setVisible(false);
         monster->hpback->setVisible(false);
-        return monster;
+        
+        return true;
     }
-    CC_SAFE_DELETE(monster);//����������ʼ��ʧ�ܣ��ͷ��ڴ沢����nullptr
-    return nullptr;
+    
+    return false;
 }
 
 // ��ʼ������
@@ -328,4 +336,3 @@ void showBossSkill(const std::string& skillText) {
     // ���ж���
     skillLabel->runAction(sequence);
 }
-  
