@@ -620,7 +620,7 @@ void GameManager::doudong() {
 }
 void GameManager::initCarrot() {
     carrot = Carrot::create(10, dst1[levelId - 1], dst2[levelId - 1]);
-    currentScene->addChild(carrot, 99);
+    currentScene->addChild(carrot, 1);
     CCLOG("CARROT READY!");
 }
 
