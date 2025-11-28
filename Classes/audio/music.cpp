@@ -284,7 +284,7 @@ void Music::gameOverSound() {
 
 void Music::kaiSound() {
     if (musicEnabled) {
-        int audioId = soundEffectStrategy->play(AudioConfig::KAI, false, 1.0f);
+        int audioId = soundEffectStrategy->play(AudioConfig::KAI, false, 10.0f);
         audioIds[AudioConfig::KAI] = audioId;
     }
 }
