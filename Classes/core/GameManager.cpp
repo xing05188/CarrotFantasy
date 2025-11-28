@@ -620,7 +620,7 @@ void GameManager::doudong() {
 }
 void GameManager::initCarrot() {
     carrot = Carrot::create(10, dst1[levelId - 1], dst2[levelId - 1]);
-    currentScene->addChild(carrot);
+    currentScene->addChild(carrot, 99);
     CCLOG("CARROT READY!");
 }
 
@@ -701,6 +701,11 @@ void GameManager::removeListener() {
 void GameManager::Jineng1()
 {
     carrot->getRecover();
+}
+
+void GameManager::Jineng6()
+{
+    carrot->enterInvincibleState();
 }
 void GameManager::stopAllSchedulers() {
     CCLOG("Stopping all schedulers for GameManager.");

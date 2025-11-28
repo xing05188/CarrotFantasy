@@ -1,13 +1,11 @@
 #include "BaseLevelScene.h"
 #include<vector>
 #include"MonsterConfigs.h"
-#include"Monster.h"
 #include "json/document.h"
 #include "json/rapidjson.h"
 #include "ui/CocosGUI.h"
 #include"music.h"
 #include"themeScene.h"
-#include"Tower.h"
 #include"GameManager.h"
 #include<string>
 #include "json/writer.h"
@@ -27,6 +25,7 @@
 #include "gameplay/events/GameFlowEvents.h"
 #include "gameplay/events/MonsterEvents.h"
 #include "gameplay/events/CarrotEvents.h"
+#include "entities/Tower/TowerFactory.h"
 using namespace rapidjson;
 using namespace ui;
 //#define DEBUG_MODE
@@ -409,6 +408,13 @@ void BaseLevelScene::Jineng5(Ref* pSender) {
         this->runAction(delayaction);
     }
 }
+void BaseLevelScene::Jineng6(Ref* pSender) {
+    Music::getInstance()->button_music();
+    if (getMoney() >= 200) {
+        updateMoney(-200);
+        manager->Jineng6();
+    }
+}
 void BaseLevelScene::UpMenuAppear(Vec2& position)
 {
     last_position = position;
@@ -555,7 +561,7 @@ void BaseLevelScene::initUI()
     }
     else
     {
-        wenhaoButton->setPosition(350, 28);
+        wenhaoButton->setPosition(320, 28);
         wenhaoButton->setScale(1.4);
         menu->addChild(wenhaoButton);
     }
@@ -566,7 +572,7 @@ void BaseLevelScene::initUI()
     }
     else
     {
-        jineng1Button->setPosition(525, 33);//525,33
+        jineng1Button->setPosition(487, 33);//525,33
         jineng1Button->setScale(1.9);
         menu->addChild(jineng1Button);
     }
@@ -577,7 +583,7 @@ void BaseLevelScene::initUI()
     }
     else
     {
-        jineng2Button->setPosition(710, 33);//710
+        jineng2Button->setPosition(665, 33);//710
         jineng2Button->setScale(1.9);
         menu->addChild(jineng2Button);
     }
@@ -588,7 +594,7 @@ void BaseLevelScene::initUI()
     }
     else
     {
-        jineng3Button->setPosition(432, 33);//432
+        jineng3Button->setPosition(395, 33);//432
         jineng3Button->setScale(1.7);
         menu->addChild(jineng3Button);
     }
@@ -599,7 +605,7 @@ void BaseLevelScene::initUI()
     }
     else
     {
-        jineng4Button->setPosition(615, 33);//615
+        jineng4Button->setPosition(568, 33);//615
         jineng4Button->setScale(1.7);
         menu->addChild(jineng4Button);
     }
@@ -610,9 +616,20 @@ void BaseLevelScene::initUI()
     }
     else
     {
-        jineng5Button->setPosition(796, 33);
+        jineng5Button->setPosition(760, 33);
         jineng5Button->setScale(1.7);
         menu->addChild(jineng5Button);
+    }
+    auto jineng6Button = MenuItemImage::create("Carrot/jineng6.png", "Carrot/jineng6_1.png", CC_CALLBACK_1(BaseLevelScene::Jineng6, this));
+    if (jineng6Button == nullptr)
+    {
+        problemLoading("'jineng6.png'");
+    }
+    else
+    {
+        jineng6Button->setPosition(850, 33);
+        jineng6Button->setScale(1.7);
+        menu->addChild(jineng6Button);
     }
 
     auto jinengtiao = Sprite::create("Carrot/jinengtiao.png");
@@ -734,7 +751,7 @@ void BaseLevelScene::registerCarrotShakeListeners() {
 
             // 隐藏原萝卜，播放抖动动画（沿用原先 GameManager::doudong 的实现）
             if (manager && manager->getCarrot()) {
-                manager->getCarrot()->setVisible(false);
+                manager->getCarrot()->getCarrotSprite()->setVisible(false);
             }
 
             auto b = cocos2d::Sprite::create();
@@ -766,7 +783,7 @@ void BaseLevelScene::registerCarrotShakeListeners() {
                 CCLOG("Carrot shake animation completed, removing sprite.");
                 b->removeFromParent();
                 if (manager && manager->getCarrot()) {
-                    manager->getCarrot()->setVisible(true);
+                    manager->getCarrot()->getCarrotSprite()->setVisible(true);
                 }
             });
             Music::getInstance()->tuSound();
@@ -1093,7 +1110,7 @@ void BaseLevelScene::PlantMenuGone(Vec2 position)
         && (location.y > last_position.y + CELL_SIZE / 2 && location.y < last_position.y + 3 * CELL_SIZE / 2)) {
         int index = index_table[(location.x - last_position.x + CELL_SIZE * size / 2) / CELL_SIZE];
         if (getMoney() >= Tower::build_cost[index]) {
-            Tower* this_tower = createTower(index);
+            Tower* this_tower = TowerFactoryProvider::createTower(index);
             this_tower->build(this, last_position);
             updateMoney(-Tower::build_cost[index]);
             Music::getInstance()->TowerBuild();
@@ -1255,7 +1272,7 @@ bool BaseLevelScene::loadTowerData(const std::string& filename)
                                 
                                if(flag==1){
                                    Vec2 pos= pos = Vec2((i+ 0.5) * CELL_SIZE, (j+0.5) * CELL_SIZE);
-                                   auto tower=createTower(index,data);
+                                   auto tower=TowerFactoryProvider::createTower(index,data);
                                    tower->build(this,pos);
                                    towers[map_data[i][j].key]=tower;
                                }

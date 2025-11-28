@@ -6,8 +6,8 @@
 #include<map>
 #include<vector>
 #include<memory>
-#include<Monster.h>
-#include"Tower.h"
+#include"entities/Monster/Monster.h"
+#include"entities/Tower/Tower.h"
 #include"Obstacle.h"
 #include"core/state/GameState.h"
 #include"core/state/PausedState.h"
@@ -120,6 +120,7 @@ public:
     void Jineng3(Ref* pSender);                                  //ը�����������й���
     void Jineng4(Ref* pSender);                                  //ֲ�﹥�ټӱ�
     void Jineng5(Ref* pSender);                                  //���޼���
+    void Jineng6(Ref* pSender);                                  //�ܲ�޵�״̬
     void guaisou_jiansu(float guai_jiansu);
 
     void saveGameState();                                        //ͨ������浵
@@ -133,4 +134,4 @@ public:
     void registerMonsterSpawnListeners();
    
 };
-#endif 
+#endif

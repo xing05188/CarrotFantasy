@@ -59,17 +59,19 @@ list(APPEND GAME_SOURCE
      Classes/core/AppDelegate.cpp
      Classes/scenes/advantureScene.cpp
      Classes/scenes/BaseLevelScene.cpp
-     Classes/entities/Carrot.cpp
+     Classes/entities/Carrot/Carrot.cpp
+     Classes/entities/Carrot/CarrotState.cpp
      Classes/core/GameManager.cpp
      Classes/scenes/menuScene.cpp
-     Classes/entities/Monster.cpp
+     Classes/entities/Monster/Monster.cpp
      Classes/config/MonsterConfigs.cpp
      Classes/audio/music.cpp
      Classes/entities/Obstacle.cpp
      Classes/scenes/seeScene.cpp
      Classes/scenes/setScene.cpp
      Classes/scenes/themeScene.cpp
-     Classes/entities/Tower.cpp
+     Classes/entities/Tower/Tower.cpp
+     Classes/entities/Tower/TowerFactory.cpp
      Classes/ui/widgets/MoneyHud.cpp
      Classes/core/state/GameState.cpp
      Classes/core/state/PausedState.cpp
@@ -80,17 +82,18 @@ list(APPEND GAME_SOURCE
      Classes/core/state/GameOverState.cpp
      Classes/core/state/GameFlowController.cpp
      Classes/core/state/GameFlowProvider.cpp
-     Classes/factories/MonsterFactory.cpp
+     Classes/entities/Monster/MonsterFactory.cpp
      )
 
 list(APPEND GAME_HEADER
      Classes/core/AppDelegate.h
      Classes/scenes/advantureScene.h
      Classes/scenes/BaseLevelScene.h
-     Classes/entities/Carrot.h
+     Classes/entities/Carrot/Carrot.h
+     Classes/entities/Carrot/CarrotState.h
      Classes/core/GameManager.h
      Classes/scenes/menuScene.h
-     Classes/entities/Monster.h
+     Classes/entities/Monster/Monster.h
      Classes/config/MonsterConfigs.h
      Classes/audio/music.h
      Classes/config/obpos.h
@@ -98,7 +101,8 @@ list(APPEND GAME_HEADER
      Classes/scenes/seeScene.h
      Classes/scenes/setScene.h
      Classes/scenes/themeScene.h
-     Classes/entities/Tower.h
+     Classes/entities/Tower/Tower.h
+     Classes/entities/Tower/TowerFactory.h
      Classes/ui/widgets/MoneyHud.h
      Classes/core/state/GameState.h
      Classes/core/state/PausedState.h
@@ -111,7 +115,7 @@ list(APPEND GAME_HEADER
      Classes/core/state/GameFlowController.h
      Classes/core/state/GameFlowProvider.h
      Classes/gameplay/events/CarrotEvents.h
-     Classes/factories/MonsterFactory.h
+     Classes/entities/Monster/MonsterFactory.h
      )
 
 if(ANDROID)
