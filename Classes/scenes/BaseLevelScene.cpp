@@ -168,7 +168,8 @@ void BaseLevelScene::wenhao(Ref* pSender) {
         "Carrot/jieshao/jie_2.png",
         "Carrot/jieshao/jie_3.png",
         "Carrot/jieshao/jie_4.png",
-        "Carrot/jieshao/jie_5.png"
+        "Carrot/jieshao/jie_5.png",
+        "Carrot/jieshao/jie_6.png"
     };
     for (int i = 0; i < mapImages.size(); ++i) {
         Layout* layout = Layout::create();
