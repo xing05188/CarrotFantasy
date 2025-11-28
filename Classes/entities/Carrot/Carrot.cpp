@@ -1,7 +1,15 @@
 #include "Carrot.h"
 #include "Music.h"
+#include "CarrotState.h"
 
 USING_NS_CC;
+
+Carrot::~Carrot() {
+    if (state) {
+        delete state;
+        state = nullptr;
+    }
+}
 
 Carrot* Carrot::create(int initialHP, const cocos2d::Vec2& carrotPos, const cocos2d::Vec2& hpPos) {
     Carrot* ret = new (std::nothrow) Carrot();
@@ -20,7 +28,7 @@ bool Carrot::init(int initialHP, const cocos2d::Vec2& carrotPos, const cocos2d::
 
     hp = initialHP;
     maxHp = initialHP;
-    isDead = (hp <= 0);
+    state = nullptr;
 
     auto frameCache = SpriteFrameCache::getInstance();
     frameCache->addSpriteFramesWithFile("CarrotGuardRes/Carrots.plist", "CarrotGuardRes/Carrots.png");
@@ -29,43 +37,46 @@ bool Carrot::init(int initialHP, const cocos2d::Vec2& carrotPos, const cocos2d::
     carrotSprite = Sprite::createWithSpriteFrameName(StringUtils::format("Carrot_%d.png", (hp + 1) / 2));
     carrotSprite->setScale(1.5F);
     carrotSprite->setPosition(carrotPos);
-    this->addChild(carrotSprite, 2);
+    this->addChild(carrotSprite, 99);
 
     hpSprite = Sprite::createWithSpriteFrameName(StringUtils::format("Health_%d.png", hp));
     hpSprite->setScale(1.5F);
     hpSprite->setPosition(hpPos);
-    this->addChild(hpSprite, 2);
+    this->addChild(hpSprite, 99);
+
+    // 初始化无敌精灵
+    invincibleSprite = Sprite::create("Carrot/wudi.png");
+    if (invincibleSprite) {
+        invincibleSprite->setScale(1.3F);
+        invincibleSprite->setPosition(carrotPos);
+        invincibleSprite->setVisible(false); // 初始状态为隐藏
+        this->addChild(invincibleSprite, 100); // 设置较高的z-order确保显示在其他精灵之上
+    }
+
+    // 初始状态
+    state = new NormalState();
+    state->enter(this);
 
     publishHpEvent(0);
-    if (isDead) {
-        publishDeathEvent();
-    }
     return true;
+}
+
+void Carrot::setState(CarrotState* newState) {
+    if (state) delete state;
+    state = newState;
+    state->enter(this);
 }
 
 void Carrot::changeHP(int change) {
     int oldHp = hp;
     hp += change;
-    if (hp < 0) {
-        hp = 0;
-    }
-    if (hp > maxHp) {
-        hp = maxHp;
-    }
+    if (hp < 0) hp = 0;
+    if (hp > maxHp) hp = maxHp;
 
-    if (hp == oldHp) {
-        return;
-    }
+    if (hp == oldHp) return;
 
     updateHPDisplay();
     publishHpEvent(hp - oldHp);
-
-    if (hp <= 0 && !isDead) {
-        isDead = true;
-        publishDeathEvent();
-    } else if (hp > 0) {
-        isDead = false;
-    }
 }
 
 void Carrot::updateHPDisplay() {
@@ -78,24 +89,21 @@ void Carrot::updateHPDisplay() {
 }
 
 void Carrot::getDamage(int damage) {
-    if (hp <= 0) {
-        return;
-    }
-    Music::getInstance()->carrotSound();
-    changeHP(-damage);
-    CCLOG("Carrot getDamage: %d", damage);
+    state->handleDamage(this, damage);
 }
 
 void Carrot::getRecover() {
-    if (hp >= maxHp) {
-        return;
-    }
-    changeHP(1);
-    CCLOG("Carrot getRecover");
+    state->handleRecover(this);
 }
 
 void Carrot::gameOver() {
+    Music::getInstance()->gameOverSound();
     CCLOG("Carrot game over");
+}
+
+//接入无敌状态
+void Carrot::enterInvincibleState() {
+    setState(new InvincibleState());
 }
 
 void Carrot::publishHpEvent(int delta) {
@@ -111,4 +119,3 @@ void Carrot::publishDeathEvent() {
     carrot::core::EventBusProvider::Get()->Publish(carrot::gameplay::events::kCarrotDiedEventId, evt);
     gameOver();
 }
-

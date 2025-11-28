@@ -1,13 +1,13 @@
 #pragma once
 
 #include "cocos2d.h"
-#include "Monster.h"
+#include "entities/Monster/Monster.h"
 #include<vector>
 #include<map>
 #include<string>
 #include"BaseLevelScene.h"
 #include<array>
-#include"Carrot.h"
+#include"entities/Carrot/Carrot.h"
 USING_NS_CC;
 
 //���޲�����Ϣ
@@ -23,8 +23,8 @@ const int MAX_MONSTER_NUM=150;
 class GameManager {
 private:
     // Ŀ��λ�õ����飬����levelId��1��2��3�ĳ����ؿ�
-    std::vector<cocos2d::Vec2> dst1 = { Vec2(804, 640 - 196), Vec2(826, 640 - 210), Vec2(831, 640 - 287) };
-    std::vector<cocos2d::Vec2> dst2 = { Vec2(854, 640 - 196), Vec2(886, 640 - 210), Vec2(881, 640 - 287) };
+    std::vector<cocos2d::Vec2> dst1 = { Vec2(804, 444), Vec2(826, 430), Vec2(831, 353) }; //萝卜位置
+    std::vector<cocos2d::Vec2> dst2 = { Vec2(854, 444), Vec2(886, 430), Vec2(881, 353) }; //血条位置
     //���������
     static GameManager* instance;                                        // ����ָ��
     BaseLevelScene* currentScene;                                        // ��ǰ�󶨵ĳ���
@@ -100,6 +100,7 @@ public:
     void removeListener() ;                                  // �Ƴ��¼�������
     void onMonsterPathComplete(cocos2d::EventCustom* event); // �¼��ص�
     void Jineng1();
+    void Jineng6();
     Carrot* getCarrot() const { return carrot; }
     void doudong();
     int GetMoney() const { return money; }

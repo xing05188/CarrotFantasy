@@ -101,6 +101,8 @@ public:
     void TowerUpdata();
     void Object();
     void ShitSound();
+    void gameOverSound();
+    void kaiSound();
 
     int is_play();
     void set_music(int option);
@@ -133,5 +135,7 @@ public:
     static const std::string TOWER_UPDATE;
     static const std::string OBJECT;
     static const std::string SHIT;
+    static const std::string GAME_OVER;
+    static const std::string KAI;
 };
 #endif // __music_H__

@@ -1,6 +1,7 @@
 #include"Tower.h"
 #include"BaseLevelScene.h"
 #include"music.h"
+#include"TowerFactory.h"
 #include<cmath>
 
 #define CELL_SIZE 64
@@ -47,18 +48,6 @@ std::string Bottle::bottle_shell[3] = { "Towers/shell1-1.png","Towers/shell1-2.p
 std::string MyPlane::ray[3] = { "Towers/ray0.png","Towers/ray1.png","Towers/ray2.png" };
 
 std::string Shit::shit_shell[3] = { "Towers/shitshell1.png","Towers/shitshell2.png","Towers/shitshell3.png" };
-
-
-Tower* createTower(int index,int grade)
-{
-	switch (index) {
-	case 0:return new Bottle(index,grade);
-	case 1:return new Sun(index,grade);
-	case 2:return new MyPlane(index, grade);
-	case 3:return new Shit(index, grade);
-	default:return nullptr;
-	}
-}
 
 int count = 0;
 

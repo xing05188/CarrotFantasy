@@ -1,6 +1,6 @@
 #pragma once
 
-#include "entities/Monster.h"
+#include "Monster.h"
 #include "cocos2d.h"
 #include <vector>
 #include <string>
