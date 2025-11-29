@@ -60,6 +60,8 @@ list(APPEND GAME_SOURCE
      Classes/scenes/advantureScene.cpp
      Classes/scenes/BaseLevelScene.cpp
      Classes/scenes/controllers/SkillController.cpp
+     Classes/scenes/controllers/GameMenuController.cpp
+     Classes/scenes/controllers/GameSpeedController.cpp
      Classes/entities/Carrot/Carrot.cpp
      Classes/entities/Carrot/CarrotState.cpp
      Classes/core/GameManager.cpp
@@ -91,6 +93,8 @@ list(APPEND GAME_HEADER
      Classes/scenes/advantureScene.h
      Classes/scenes/BaseLevelScene.h
      Classes/scenes/controllers/SkillController.h
+     Classes/scenes/controllers/GameMenuController.h
+     Classes/scenes/controllers/GameSpeedController.h
      Classes/entities/Carrot/Carrot.h
      Classes/entities/Carrot/CarrotState.h
      Classes/core/GameManager.h

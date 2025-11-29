@@ -8,6 +8,8 @@
 #include"themeScene.h"
 #include"GameManager.h"
 #include "scenes/controllers/SkillController.h"
+#include "scenes/controllers/GameMenuController.h"
+#include "scenes/controllers/GameSpeedController.h"
 #include<string>
 #include "json/writer.h"
 #include"obpos.h"
@@ -83,24 +85,11 @@ void BaseLevelScene::updateCurrentWaveLabe() {
 }
 /******************************************/
 
-// 切换 1 倍 / 2 倍速度：同时影响塔攻击和怪物移动
+// 切换 1 倍 / 2 倍速度（已迁移到 GameSpeedController）
 void BaseLevelScene::doublespeed(Ref* pSender) {
-    isDoubleSpeed = !isDoubleSpeed;
-    Music::getInstance()->button_music();
-    MenuItemImage* button = static_cast<MenuItemImage*>(pSender);
-    if (isDoubleSpeed) {
-        button->setNormalImage(Sprite::create("CarrotGuardRes/UI/doubleSpeed.png"));
-        button->setSelectedImage(Sprite::create("CarrotGuardRes/UI/doubleSpeed.png"));
-        tower_jiasu = 2;
-        guaisou_jiansu(2.0f);
-        beishu = 2;
-    }
-    else {
-        button->setNormalImage(Sprite::create("CarrotGuardRes/UI/normalSpeed.png"));
-        button->setSelectedImage(Sprite::create("CarrotGuardRes/UI/normalSpeed.png"));
-        tower_jiasu = 1;
-        guaisou_jiansu(1.0f);
-        beishu = 1;
+    if (speedController_) {
+        speedController_->toggleSpeed(pSender);
+        isDoubleSpeed = speedController_->isDoubleSpeed();  // 同步状态
     }
 }
 // 暂停 / 继续按钮：同时控制本地 UI 和 GameFlow 状态机
@@ -137,148 +126,17 @@ void BaseLevelScene::pause_all(Ref* pSender) {
     }
 }
 
-// 右下角问号：弹出多页新手引导 / 说明界面
+// 右下角问号：弹出多页新手引导 / 说明界面（已迁移到 GameMenuController）
 void BaseLevelScene::wenhao(Ref* pSender) {
-    Music::getInstance()->button_music();
-    auto visibleSize = Director::getInstance()->getVisibleSize();
-    Vec2 origin = Director::getInstance()->getVisibleOrigin();
-    Size screenSize = Director::getInstance()->getWinSize();
-    auto menuLayer = LayerColor::create(Color4B(0, 0, 0, 150));
-    menuLayer->setPosition(Vec2::ZERO);
-    this->addChild(menuLayer, 10);
-    auto listener = EventListenerTouchOneByOne::create();
-    listener->setSwallowTouches(true);
-    listener->onTouchBegan = [menuLayer](Touch* touch, Event* event) {
-        return true;
-        };
-    Director::getInstance()->getEventDispatcher()->addEventListenerWithSceneGraphPriority(listener, menuLayer);
-    auto jie = Sprite::create("Carrot/jieshao/jie_0.png");
-    jie->setPosition(480, 500);
-    jie->setScale(2);
-    menuLayer->addChild(jie, 1);
-    auto menu = Menu::create();
-    menu->setPosition(Vec2::ZERO);
-    menuLayer->addChild(menu, 1);
-
-    auto pageView = PageView::create();
-    pageView->setContentSize(Size(screenSize.width, screenSize.height));
-    pageView->setPosition(Vec2::ZERO);
-    menuLayer->addChild(pageView);
-    std::vector<std::string> mapImages = {
-        "Carrot/jieshao/jie_1.png",
-        "Carrot/jieshao/jie_2.png",
-        "Carrot/jieshao/jie_3.png",
-        "Carrot/jieshao/jie_4.png",
-        "Carrot/jieshao/jie_5.png",
-        "Carrot/jieshao/jie_6.png"
-    };
-    for (int i = 0; i < mapImages.size(); ++i) {
-        Layout* layout = Layout::create();
-        layout->setContentSize(Size(screenSize.width, screenSize.height));
-        ImageView* imageView = ImageView::create(mapImages[i]);
-        imageView->setContentSize(Size(screenSize.width, screenSize.height));
-        imageView->setPosition(Vec2(layout->getContentSize().width / 2, layout->getContentSize().height / 2));
-        imageView->setScale(2);
-        layout->addChild(imageView, 1);
-        pageView->addPage(layout);
+    if (menuController_) {
+        menuController_->showHelpMenu(pSender);
     }
-    auto continueButton = MenuItemImage::create("Carrot/jieshao/cha_0.png", "Carrot/jieshao/cha_1.png");
-    continueButton->setPosition(814,503);
-    continueButton->setScale(1.9);
-    continueButton->setCallback([this, menuLayer](Ref* psender) {
-        Music::getInstance()->button_music();
-        this->removeChild(menuLayer);
-        });
-    menu->addChild(continueButton, 1);
-    auto leftButton = Button::create("CarrotGuardRes/UI/leftButtonNormal.png", "CarrotGuardRes/UI/leftButtonSelected.png");
-    leftButton->setPosition(Vec2(screenSize.width * 0.1, screenSize.height / 2));
-    leftButton->addTouchEventListener([=](Ref* pSender, Widget::TouchEventType type) {
-        if (type == Widget::TouchEventType::ENDED) {
-            Music::getInstance()->button_music();
-            int currentIndex = pageView->getCurrentPageIndex();
-            CCLOG("currentIndex:  %d", currentIndex);
-            if (currentIndex > 0)
-                pageView->scrollToPage(currentIndex - 1);
-        }
-        });
-    menuLayer->addChild(leftButton, 1);
-    auto rightButton = Button::create("CarrotGuardRes/UI/rightButtonNormal.png", "CarrotGuardRes/UI/rightButtonSelected.png");
-    rightButton->setPosition(Vec2(screenSize.width * 0.9, screenSize.height / 2));
-    rightButton->addTouchEventListener([=](Ref* pSender, Widget::TouchEventType type) {
-        if (type == Widget::TouchEventType::ENDED) {
-            Music::getInstance()->button_music();
-            int currentIndex = pageView->getCurrentPageIndex();
-            if (currentIndex < 0)
-               currentIndex = 0;
-            CCLOG("currentIndex:  %d", currentIndex);
-            if (currentIndex < mapImages.size() - 1)
-                pageView->scrollToPage(currentIndex + 1);
-        }
-        });
-    menuLayer->addChild(rightButton, 1); 
 }
+// 游戏菜单（已迁移到 GameMenuController）
 void BaseLevelScene::menu_all(Ref* pSender) {
-    Music::getInstance()->button_music();
-    Director::getInstance()->pause();
-    auto visibleSize = Director::getInstance()->getVisibleSize();
-    Vec2 origin = Director::getInstance()->getVisibleOrigin();
-    Size screenSize = Director::getInstance()->getWinSize();
-    auto menuLayer = LayerColor::create(Color4B(0, 0, 0, 150));
-    menuLayer->setPosition(Vec2::ZERO);
-    this->addChild(menuLayer, 10);
-    auto listener = EventListenerTouchOneByOne::create();
-    listener->setSwallowTouches(true);
-    listener->onTouchBegan = [menuLayer](Touch* touch, Event* event) {
-        return true;
-        };
-    Director::getInstance()->getEventDispatcher()->addEventListenerWithSceneGraphPriority(listener, menuLayer);
-    auto menuBackground = Sprite::create("CarrotGuardRes/UI/gameMenu.png");
-    menuBackground->setPosition(Vec2(visibleSize.width / 2 + origin.x, visibleSize.height / 2 + origin.y));
-    menuBackground->setScale(1.5f);
-    menuLayer->addChild(menuBackground, 0);
-    auto menu = Menu::create();
-    menu->setPosition(Vec2::ZERO);
-    menuLayer->addChild(menu, 1);
-    auto continueButton = MenuItemImage::create("CarrotGuardRes/UI/continueNormal.png", "CarrotGuardRes/UI/continueSelected.png");
-    continueButton->setPosition(Vec2(screenSize.width * 0.495, screenSize.height * 0.649));
-    continueButton->setScale(1.5);
-    auto restartButton = MenuItemImage::create("CarrotGuardRes/UI/restartNormal.png", "CarrotGuardRes/UI/restartSelected.png");
-    restartButton->setPosition(Vec2(screenSize.width * 0.495, screenSize.height * 0.51));
-    restartButton->setScale(1.5);
-    auto chooseButton = MenuItemImage::create("CarrotGuardRes/UI/chooseLevelNormal.png", "CarrotGuardRes/UI/chooseLevelSelected.png");
-    chooseButton->setPosition(Vec2(screenSize.width * 0.495, screenSize.height * 0.375));
-    chooseButton->setScale(1.5);
-    continueButton->setCallback([this, menuLayer](Ref* psender) {
-        Music::getInstance()->button_music();
-        this->removeChild(menuLayer);
-        if (!isGamePaused) {
-            Director::getInstance()->resume();
-        }
-        });
-    restartButton->setCallback([this, menuLayer](Ref* psender) {
-        Music::getInstance()->button_music();
-        this->removeChild(menuLayer);
-        GameManager::getInstance()->stopAllSchedulers();
-        manager->removeListener();
-        auto scene = BaseLevelScene::createScene(levelId);
-        scheduler->setTimeScale(1.0f);
-        Director::getInstance()->replaceScene(scene);
-        Director::getInstance()->resume();
-        });
-
-    chooseButton->setCallback([this, menuLayer](Ref* psender) {
-        Music::getInstance()->button_music();
-        saveGameState();
-        manager->saveMonstersDataToJson("level"+std::to_string(levelId)+"Monster.json");
-        saveTowerData();
-        this->removeChild(menuLayer);
-        GameManager::getInstance()->stopAllSchedulers();
-        manager->removeListener();
-        transitionToLevelSelectState();
-        });
-    menu->addChild(continueButton, 1);
-    menu->addChild(chooseButton, 1);
-    menu->addChild(restartButton, 1);
+    if (menuController_) {
+        menuController_->showGameMenu(pSender);
+    }
 }
 
 void BaseLevelScene::transitionToMenuState() {
@@ -797,6 +655,9 @@ void BaseLevelScene::CountDown(std::function<void()> onComplete)
     );
     this->runAction(countdown);
 }
+
+
+
 bool BaseLevelScene::initWithLevel(int level)
 {
     if (!Scene::init())
@@ -819,6 +680,33 @@ bool BaseLevelScene::initWithLevel(int level)
     callbacks.addChildToScene = [this](Node* node) { this->addChild(node); };
     callbacks.runActionOnScene = [this](Action* action) { this->runAction(action); };
     skillController_->init(callbacks, manager);
+    
+    // 初始化游戏菜单控制器
+    menuController_ = new GameMenuController();
+    GameMenuController::MenuCallbacks menuCallbacks;
+    menuCallbacks.addChildToScene = [this](Node* node) { this->addChild(node, 10); };
+    menuCallbacks.removeChildByName = [this](const std::string& name) { this->removeChildByName(name); };
+    menuCallbacks.removeChild = [this](Node* node) { this->removeChild(node); };
+    menuCallbacks.pauseDirector = []() { Director::getInstance()->pause(); };
+    menuCallbacks.resumeDirector = []() { Director::getInstance()->resume(); };
+    menuCallbacks.replaceScene = [](Scene* scene) { Director::getInstance()->replaceScene(scene); };
+    menuCallbacks.saveGameState = [this]() { this->saveGameState(); };
+    menuCallbacks.saveTowerData = [this]() { this->saveTowerData(); };
+    menuCallbacks.transitionToLevelSelectState = [this]() { this->transitionToLevelSelectState(); };
+    menuCallbacks.createLevelScene = [](int level) { return BaseLevelScene::createScene(level); };
+    menuCallbacks.getLevelId = [this]() { return this->levelId; };
+    menuCallbacks.isGamePaused = [this]() { return this->isGamePaused; };
+    menuCallbacks.stopAllSchedulers = []() { GameManager::getInstance()->stopAllSchedulers(); };
+    menuCallbacks.removeListener = [this]() { manager->removeListener(); };
+    menuCallbacks.saveMonstersData = [this](const std::string& filename) { manager->saveMonstersDataToJson(filename); };
+    menuCallbacks.setTimeScale = [this](float scale) { scheduler->setTimeScale(scale); };
+    menuController_->init(menuCallbacks);
+    
+    // 初始化游戏速度控制器
+    speedController_ = new GameSpeedController();
+    GameSpeedController::SpeedCallbacks speedCallbacks;
+    speedCallbacks.applyMonsterSpeed = [this](float speed) { this->guaisou_jiansu(speed); };
+    speedController_->init(speedCallbacks);
     
     initUI();
     registerOutcomeListeners();
@@ -867,6 +755,8 @@ bool BaseLevelScene::init() {
         return false;
     }
     skillController_ = nullptr;
+    menuController_ = nullptr;
+    speedController_ = nullptr;
     return true;
 }
 
@@ -874,6 +764,14 @@ BaseLevelScene::~BaseLevelScene() {
     if (skillController_) {
         delete skillController_;
         skillController_ = nullptr;
+    }
+    if (menuController_) {
+        delete menuController_;
+        menuController_ = nullptr;
+    }
+    if (speedController_) {
+        delete speedController_;
+        speedController_ = nullptr;
     }
 }
 // 每帧更新：刷新波次 UI、驱动塔攻击，并交给 GameManager 判定胜负

@@ -19,6 +19,8 @@ USING_NS_CC;
 
 // 前向声明
 class SkillController;
+class GameMenuController;
+class GameSpeedController;
 
 #define Y 9
 #define X 15
@@ -67,6 +69,10 @@ private:
 
     // 技能控制器
     SkillController* skillController_;
+    // 游戏菜单控制器
+    GameMenuController* menuController_;
+    // 游戏速度控制器
+    GameSpeedController* speedController_;
 
     //�������
     std::vector<Sprite*>remove_table;                        //removeʱ�ķ���
