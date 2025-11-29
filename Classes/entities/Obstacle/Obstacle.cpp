@@ -154,7 +154,7 @@ void Obstacle::updateShieldBar() {
 void Obstacle::getHurt(int value) {
 	// 如果有护盾，先扣除护盾值
 	if (shield > 0) {
-		if (shield >= value) {
+		if (shield > value) {
 			setShieldVisible(true);
 			shield -= value;
 			updateShieldBar();
