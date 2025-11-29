@@ -21,6 +21,7 @@ USING_NS_CC;
 class SkillController;
 class GameMenuController;
 class GameSpeedController;
+class CountDownController;
 
 #define Y 9
 #define X 15
@@ -73,6 +74,8 @@ private:
     GameMenuController* menuController_;
     // 游戏速度控制器
     GameSpeedController* speedController_;
+    // 倒计时控制器
+    CountDownController* countDownController_;
 
     //�������
     std::vector<Sprite*>remove_table;                        //removeʱ�ķ���

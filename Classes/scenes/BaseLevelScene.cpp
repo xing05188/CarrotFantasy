@@ -10,6 +10,7 @@
 #include "scenes/controllers/SkillController.h"
 #include "scenes/controllers/GameMenuController.h"
 #include "scenes/controllers/GameSpeedController.h"
+#include "scenes/controllers/CountDownController.h"
 #include<string>
 #include "json/writer.h"
 #include"obpos.h"
@@ -79,6 +80,8 @@ void BaseLevelScene::updateMoney(int add) {
         instance->ChangeMoney(add);
     }
 }
+
+
 
 void BaseLevelScene::updateCurrentWaveLabe() {
     _curNumberLabel->setString(StringUtils::format("%d", std::min(manager->getCurrentWaveNum() + 1, manager->getAllWaveNum())));
@@ -585,75 +588,15 @@ void BaseLevelScene::registerCarrotShakeListeners() {
             b->runAction(cocos2d::Sequence::create(animate, onComplete, nullptr));
         });
 }
+// 倒计时（已迁移到 CountDownController）
 void BaseLevelScene::CountDown(std::function<void()> onComplete)
 {
-    auto countBackground = Sprite::create("CarrotGuardRes/UI/countBackground.png");
-    auto count1 = Sprite::create("CarrotGuardRes/UI/countOne.png");
-    auto count2 = Sprite::create("CarrotGuardRes/UI/countTwo.png");
-    auto count3 = Sprite::create("CarrotGuardRes/UI/countThree.png");
-    Label* count0 = Label::createWithSystemFont("GO", "Arial-BoldMT", 100);
-
-    countBackground->setPosition(480, 320);
-    count1->setPosition(480, 320);
-    count2->setPosition(480, 320);
-    count3->setPosition(480, 320);
-    count0->setPosition(480, 320);
-
-    countBackground->setVisible(false);
-    count1->setVisible(false);
-    count2->setVisible(false);
-    count3->setVisible(false);
-    count0->setVisible(false);
-
-    this->addChild(countBackground, 2);
-    this->addChild(count1, 2);
-    this->addChild(count2, 2);
-    this->addChild(count3, 2);
-    this->addChild(count0, 2);
-    auto countdown = Sequence::create(
-        CallFunc::create([=] {
-            countBackground->setVisible(true);
-            count3->setVisible(true);
-            Music::getInstance()->countSound();
-            }),
-        DelayTime::create(1),
-
-        CallFunc::create([=] {
-            this->removeChild(count3);
-            }),
-        CallFunc::create([=] {
-            count2->setVisible(true);
-            Music::getInstance()->countSound();
-            }),
-        DelayTime::create(1),
-
-        CallFunc::create([=] {
-            this->removeChild(count2);
-            }),
-        CallFunc::create([=] {
-            count1->setVisible(true);
-            Music::getInstance()->countSound();
-            }),
-        DelayTime::create(1),
-
-        CallFunc::create([=] {
-            this->removeChild(count1);
-            count0->setVisible(true);
-            Music::getInstance()->countSound();
-            }),
-        DelayTime::create(1),
-
-        CallFunc::create([=] {
-            this->removeChild(count0);
-            this->removeChild(countBackground);
-
-            if (onComplete) {
-                onComplete();
-            }
-            }),
-        nullptr
-    );
-    this->runAction(countdown);
+    if (countDownController_) {
+        countDownController_->startCountDown(onComplete);
+    } else if (onComplete) {
+        // 如果 Controller 未初始化，直接执行完成回调
+        onComplete();
+    }
 }
 
 
@@ -708,6 +651,14 @@ bool BaseLevelScene::initWithLevel(int level)
     speedCallbacks.applyMonsterSpeed = [this](float speed) { this->guaisou_jiansu(speed); };
     speedController_->init(speedCallbacks);
     
+    // 初始化倒计时控制器
+    countDownController_ = new CountDownController();
+    CountDownController::CountDownCallbacks countDownCallbacks;
+    countDownCallbacks.addChildToScene = [this](Node* node) { this->addChild(node, 2); };
+    countDownCallbacks.removeChild = [this](Node* node) { this->removeChild(node); };
+    countDownCallbacks.runActionOnScene = [this](Action* action) { this->runAction(action); };
+    countDownController_->init(countDownCallbacks);
+    
     initUI();
     registerOutcomeListeners();
     registerMonsterListeners();
@@ -757,6 +708,7 @@ bool BaseLevelScene::init() {
     skillController_ = nullptr;
     menuController_ = nullptr;
     speedController_ = nullptr;
+    countDownController_ = nullptr;
     return true;
 }
 
@@ -772,6 +724,10 @@ BaseLevelScene::~BaseLevelScene() {
     if (speedController_) {
         delete speedController_;
         speedController_ = nullptr;
+    }
+    if (countDownController_) {
+        delete countDownController_;
+        countDownController_ = nullptr;
     }
 }
 // 每帧更新：刷新波次 UI、驱动塔攻击，并交给 GameManager 判定胜负
