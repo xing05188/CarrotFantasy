@@ -491,7 +491,14 @@ void BaseLevelScene::registerMonsterSpawnListeners() {
         [this](const carrot::core::Event& baseEvent) {
             const auto& evt = static_cast<const carrot::gameplay::events::MonsterSpawnedEvent&>(baseEvent);
             if (evt.monster) {
-                this->addChild(evt.monster);
+                // 防御性检查：只有当怪物还未被加入场景时才 addChild，避免重复添加触发断言
+                if (evt.monster->getParent() == nullptr) {
+                    this->addChild(evt.monster);
+                } else {
+                    auto p = evt.monster->getParent();
+                    std::string pname = p ? p->getName() : std::string("(null)");
+                    CCLOG("BaseLevelScene: Monster already has parent, skipping addChild. Monster=%p, parent=%p, parentName=%s", evt.monster, p, pname.c_str());
+                }
             }
         });
 }
@@ -726,6 +733,14 @@ bool BaseLevelScene::init() {
 }
 
 BaseLevelScene::~BaseLevelScene() {
+    // 取消所有通过 EventBus 注册的订阅，防止场景重建时产生重复回调
+    if (gameWonSubscription) { gameWonSubscription.reset(); }
+    if (gameLostSubscription) { gameLostSubscription.reset(); }
+    if (monsterDiedSubscription) { monsterDiedSubscription.reset(); }
+    if (spawnEffectSubscription) { spawnEffectSubscription.reset(); }
+    if (carrotShakeSubscription) { carrotShakeSubscription.reset(); }
+    if (monsterSpawnSubscription) { monsterSpawnSubscription.reset(); }
+
     if (skillController_) {
         delete skillController_;
         skillController_ = nullptr;
