@@ -17,6 +17,12 @@
 
 USING_NS_CC;
 
+// 前向声明
+class SkillController;
+class GameMenuController;
+class GameSpeedController;
+class CountDownController;
+
 #define Y 9
 #define X 15
 
@@ -40,6 +46,8 @@ class MoneyHud;
 }
 
 class BaseLevelScene : public cocos2d::Scene {
+public:
+    virtual ~BaseLevelScene();
 private:
     cocos2d::Node* plantsLayer;                              //ֲ��ͼ��
     TMXLayer* plantableLayer = nullptr;                      // plantable ��
@@ -60,6 +68,14 @@ private:
     std::shared_ptr<carrot::core::Subscription> carrotShakeSubscription;
     std::shared_ptr<carrot::core::Subscription> monsterSpawnSubscription;
 
+    // 技能控制器
+    SkillController* skillController_;
+    // 游戏菜单控制器
+    GameMenuController* menuController_;
+    // 游戏速度控制器
+    GameSpeedController* speedController_;
+    // 倒计时控制器
+    CountDownController* countDownController_;
 
     //�������
     std::vector<Sprite*>remove_table;                        //removeʱ�ķ���
@@ -102,8 +118,6 @@ public:
     void drawGrid();                                        //��������
     void UpMenuAppear(Vec2& position);                      //�����˵�����
     void UpMenuGone(Vec2& position);                        //�����˵���ʧ
-    void saveTowerData();
-    bool loadTowerData(const std::string& filename);
     Vec2 gridToScreenCenter(const Vec2& gridPoint);         //����������ת����Ļ����Ĺ��ߺ���
 
     //��ť
@@ -123,7 +137,7 @@ public:
     void Jineng6(Ref* pSender);                                  //�ܲ�޵�״̬
     void guaisou_jiansu(float guai_jiansu);
 
-    void saveGameState();                                        //ͨ������浵
+    // 读档相关
     Monster* IsTargetMonster(const Vec2& pos);                   //����Ƿ��й��ﱻ����
     void transitionToMenuState();
     void transitionToLevelSelectState();

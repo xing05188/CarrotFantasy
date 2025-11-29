@@ -54,7 +54,10 @@ void GameOverState::Enter(GameStateContext& /*context*/) {
 
     if (auto baseScene = dynamic_cast<BaseLevelScene*>(runningScene)) {
         baseScene->unscheduleUpdate();
-        baseScene->saveGameState();
+        auto manager = GameManager::getInstance();
+        if (manager) {
+            manager->saveGameState();
+        }
     }
 
     overlay_ = cocos2d::LayerColor::create(cocos2d::Color4B(0, 0, 0, 0));

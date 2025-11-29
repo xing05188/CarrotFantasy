@@ -1,4 +1,4 @@
-#include"GameManager.h"
+﻿#include"GameManager.h"
 #include<vector>
 #include "json/document.h"
 #include "json/rapidjson.h"
@@ -12,6 +12,9 @@
 #include "../gameplay/events/GameFlowEvents.h"
 #include "../gameplay/events/MonsterEvents.h"
 #include "../gameplay/events/CarrotEvents.h"
+#include "../entities/Tower/TowerFactory.h"
+#include "../entities/Obstacle.h"
+#include "StorageService/StorageService.h"
 
 USING_NS_CC;
 extern int DeadCount;
@@ -67,7 +70,7 @@ bool GameManager::CheckWin()
     if (waveIndex + 1 < AllWaveNum) return false;
     if (carrot->getHP() <= 0) return false;
     CCLOG("------------------------------------%d", monsters.size());
-    if (monsters.size() < AllMonsterNum) return false;
+    if (monsters.size() < static_cast<size_t>(AllMonsterNum)) return false;
     for (auto it = monsters.begin(); it != monsters.end(); it++) {
         if ((*it)->getHealth() > 0) return false;
     }
@@ -112,7 +115,15 @@ void GameManager::initLevel(int level,bool initMode)
     ClearMonsters();
     AllMonsterNum=0;
     DeadCount=0;
-    SetMoney(kDefaultStartingMoney, false);
+    // 只有在非读档模式（新游戏）时才重置金钱，读档模式下金钱会从存档中恢复
+    CCLOG("GameManager::initLevel: level=%d, initMode=%s, current money=%d", 
+          level, initMode ? "true (load)" : "false (new)", GetMoney());
+    if (!initMode) {
+        CCLOG("GameManager::initLevel: Resetting money to default: %d", kDefaultStartingMoney);
+        SetMoney(kDefaultStartingMoney, false);
+    } else {
+        CCLOG("GameManager::initLevel: Load mode - keeping current money: %d (will be loaded from file)", GetMoney());
+    }
     hasGameWon = false;
     hasGameLost = false;
     initPath();
@@ -418,7 +429,7 @@ void GameManager::startMonsterWaves() {
     CCLOG("Starting wave %d", waveIndex);
     produceMonsterWave(waveConfigs[waveIndex]);
     cocos2d::Director::getInstance()->getScheduler()->schedule([this](float) {
-        if (waveIndex >= waveConfigs.size() - 1) {
+        if (waveIndex >= static_cast<int>(waveConfigs.size()) - 1) {
             CCLOG("All waves are complete.");
             cocos2d::Director::getInstance()->getScheduler()->unschedule("startWave", this);
             return;
@@ -478,11 +489,11 @@ bool GameManager::loadGameData(const std::string& fileName) {
     waveConfigs.clear();
     WaveConfig waveConfig;
     std::string filePath = cocos2d::FileUtils::getInstance()->getWritablePath() + fileName;
-    CCLOG("���ڼ��ش浵�ļ�: %s", filePath.c_str());
+    CCLOG("Loading save file: %s", filePath.c_str());
 
     std::ifstream ifs(filePath);
     if (!ifs.is_open()) {
-        CCLOG("�޷��򿪴浵�ļ���%s", filePath.c_str());
+        CCLOG("Cannot open save file: %s", filePath.c_str());
         return false;
     }
 
@@ -490,11 +501,11 @@ bool GameManager::loadGameData(const std::string& fileName) {
     buffer << ifs.rdbuf();
     std::string fileContent = buffer.str();
     ifs.close();
-    CCLOG("�ļ�����: %s", fileContent.c_str());
+    CCLOG("File content: %s", fileContent.c_str());
 
     rapidjson::Document document;
     if (document.Parse(fileContent.c_str()).HasParseError()) {
-        CCLOG("JSON ��������");
+        CCLOG("JSON parse error");
         return false;
     }
 
@@ -595,10 +606,10 @@ void GameManager::saveMonstersDataToJson(const std::string& fileName) {
     if (ofs.is_open()) {
         ofs << buffer.GetString();
         ofs.close();
-        CCLOG("�浵�ɹ���%s", filePath.c_str());
+        CCLOG("Save success: %s", filePath.c_str());
     }
     else {
-        CCLOG("�浵ʧ�ܣ�%s", filePath.c_str());
+        CCLOG("Save failed: %s", filePath.c_str());
     }
 }
 void GameManager::doudong() {
@@ -631,8 +642,11 @@ void GameManager::ChangeMoney(int delta) {
 
 // 设置金币并按需通知监听者，保持 HUD 等同步
 void GameManager::SetMoney(int value, bool publishEvent) {
+    int oldMoney = money;
     int delta = value - money;
     money = value;
+    CCLOG("GameManager::SetMoney: %d -> %d (delta: %d, publishEvent: %s)", 
+          oldMoney, money, delta, publishEvent ? "true" : "false");
     if (publishEvent) {
         PublishMoneyChangedEvent(delta);
     }
@@ -716,4 +730,35 @@ Vec2 GameManager::gridToScreenCenter(const Vec2& gridPoint) {
     float screenX = gridPoint.x * (currentScene->tileSize.height) + (currentScene->tileSize.width) / 2;
     float screenY = (mapHeight - gridPoint.y - 1) * (currentScene->tileSize.height) + (currentScene->tileSize.height) / 2;
     return Vec2(screenX, screenY);
+}
+
+// 存档/读档功能实现
+void GameManager::saveGameState() {
+    StorageService::getInstance()->saveGameState();
+}
+
+void GameManager::saveTowerData() {
+    if (!currentScene) {
+        CCLOG("GameManager: currentScene is null, cannot save tower data");
+        return;
+    }
+    StorageService::getInstance()->saveTowerData(currentScene, levelId, GetMoney());
+}
+
+bool GameManager::loadTowerData(const std::string& filename) {
+    if (!currentScene) {
+        CCLOG("GameManager::loadTowerData: ERROR - currentScene is null, cannot load tower data");
+        return false;
+    }
+    CCLOG("GameManager::loadTowerData: Loading file %s, current money: %d", filename.c_str(), GetMoney());
+    bool result = StorageService::getInstance()->loadTowerData(currentScene, filename, 
+        [this](int money) { 
+            CCLOG("GameManager::loadTowerData callback: Setting money to %d", money);
+            // 发布事件以更新 UI（MoneyHud 监听此事件）
+            SetMoney(money, true); 
+            CCLOG("GameManager::loadTowerData callback: Money after SetMoney: %d", GetMoney());
+        });
+    CCLOG("GameManager::loadTowerData: Load result: %s, final money: %d", 
+          result ? "success" : "failed", GetMoney());
+    return result;
 }

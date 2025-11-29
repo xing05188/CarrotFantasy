@@ -7,6 +7,10 @@
 #include"music.h"
 #include"themeScene.h"
 #include"GameManager.h"
+#include "scenes/controllers/SkillController.h"
+#include "scenes/controllers/GameMenuController.h"
+#include "scenes/controllers/GameSpeedController.h"
+#include "scenes/controllers/CountDownController.h"
 #include<string>
 #include "json/writer.h"
 #include"obpos.h"
@@ -78,29 +82,18 @@ void BaseLevelScene::updateMoney(int add) {
     }
 }
 
+
+
 void BaseLevelScene::updateCurrentWaveLabe() {
     _curNumberLabel->setString(StringUtils::format("%d", std::min(manager->getCurrentWaveNum() + 1, manager->getAllWaveNum())));
 }
 /******************************************/
 
-// 切换 1 倍 / 2 倍速度：同时影响塔攻击和怪物移动
+// 切换 1 倍 / 2 倍速度（已迁移到 GameSpeedController）
 void BaseLevelScene::doublespeed(Ref* pSender) {
-    isDoubleSpeed = !isDoubleSpeed;
-    Music::getInstance()->button_music();
-    MenuItemImage* button = static_cast<MenuItemImage*>(pSender);
-    if (isDoubleSpeed) {
-        button->setNormalImage(Sprite::create("CarrotGuardRes/UI/doubleSpeed.png"));
-        button->setSelectedImage(Sprite::create("CarrotGuardRes/UI/doubleSpeed.png"));
-        tower_jiasu = 2;
-        guaisou_jiansu(2.0f);
-        beishu = 2;
-    }
-    else {
-        button->setNormalImage(Sprite::create("CarrotGuardRes/UI/normalSpeed.png"));
-        button->setSelectedImage(Sprite::create("CarrotGuardRes/UI/normalSpeed.png"));
-        tower_jiasu = 1;
-        guaisou_jiansu(1.0f);
-        beishu = 1;
+    if (speedController_) {
+        speedController_->toggleSpeed(pSender);
+        isDoubleSpeed = speedController_->isDoubleSpeed();  // 同步状态
     }
 }
 // 暂停 / 继续按钮：同时控制本地 UI 和 GameFlow 状态机
@@ -137,148 +130,17 @@ void BaseLevelScene::pause_all(Ref* pSender) {
     }
 }
 
-// 右下角问号：弹出多页新手引导 / 说明界面
+// 右下角问号：弹出多页新手引导 / 说明界面（已迁移到 GameMenuController）
 void BaseLevelScene::wenhao(Ref* pSender) {
-    Music::getInstance()->button_music();
-    auto visibleSize = Director::getInstance()->getVisibleSize();
-    Vec2 origin = Director::getInstance()->getVisibleOrigin();
-    Size screenSize = Director::getInstance()->getWinSize();
-    auto menuLayer = LayerColor::create(Color4B(0, 0, 0, 150));
-    menuLayer->setPosition(Vec2::ZERO);
-    this->addChild(menuLayer, 10);
-    auto listener = EventListenerTouchOneByOne::create();
-    listener->setSwallowTouches(true);
-    listener->onTouchBegan = [menuLayer](Touch* touch, Event* event) {
-        return true;
-        };
-    Director::getInstance()->getEventDispatcher()->addEventListenerWithSceneGraphPriority(listener, menuLayer);
-    auto jie = Sprite::create("Carrot/jieshao/jie_0.png");
-    jie->setPosition(480, 500);
-    jie->setScale(2);
-    menuLayer->addChild(jie, 1);
-    auto menu = Menu::create();
-    menu->setPosition(Vec2::ZERO);
-    menuLayer->addChild(menu, 1);
-
-    auto pageView = PageView::create();
-    pageView->setContentSize(Size(screenSize.width, screenSize.height));
-    pageView->setPosition(Vec2::ZERO);
-    menuLayer->addChild(pageView);
-    std::vector<std::string> mapImages = {
-        "Carrot/jieshao/jie_1.png",
-        "Carrot/jieshao/jie_2.png",
-        "Carrot/jieshao/jie_3.png",
-        "Carrot/jieshao/jie_4.png",
-        "Carrot/jieshao/jie_5.png",
-        "Carrot/jieshao/jie_6.png"
-    };
-    for (int i = 0; i < mapImages.size(); ++i) {
-        Layout* layout = Layout::create();
-        layout->setContentSize(Size(screenSize.width, screenSize.height));
-        ImageView* imageView = ImageView::create(mapImages[i]);
-        imageView->setContentSize(Size(screenSize.width, screenSize.height));
-        imageView->setPosition(Vec2(layout->getContentSize().width / 2, layout->getContentSize().height / 2));
-        imageView->setScale(2);
-        layout->addChild(imageView, 1);
-        pageView->addPage(layout);
+    if (menuController_) {
+        menuController_->showHelpMenu(pSender);
     }
-    auto continueButton = MenuItemImage::create("Carrot/jieshao/cha_0.png", "Carrot/jieshao/cha_1.png");
-    continueButton->setPosition(814,503);
-    continueButton->setScale(1.9);
-    continueButton->setCallback([this, menuLayer](Ref* psender) {
-        Music::getInstance()->button_music();
-        this->removeChild(menuLayer);
-        });
-    menu->addChild(continueButton, 1);
-    auto leftButton = Button::create("CarrotGuardRes/UI/leftButtonNormal.png", "CarrotGuardRes/UI/leftButtonSelected.png");
-    leftButton->setPosition(Vec2(screenSize.width * 0.1, screenSize.height / 2));
-    leftButton->addTouchEventListener([=](Ref* pSender, Widget::TouchEventType type) {
-        if (type == Widget::TouchEventType::ENDED) {
-            Music::getInstance()->button_music();
-            int currentIndex = pageView->getCurrentPageIndex();
-            CCLOG("currentIndex:  %d", currentIndex);
-            if (currentIndex > 0)
-                pageView->scrollToPage(currentIndex - 1);
-        }
-        });
-    menuLayer->addChild(leftButton, 1);
-    auto rightButton = Button::create("CarrotGuardRes/UI/rightButtonNormal.png", "CarrotGuardRes/UI/rightButtonSelected.png");
-    rightButton->setPosition(Vec2(screenSize.width * 0.9, screenSize.height / 2));
-    rightButton->addTouchEventListener([=](Ref* pSender, Widget::TouchEventType type) {
-        if (type == Widget::TouchEventType::ENDED) {
-            Music::getInstance()->button_music();
-            int currentIndex = pageView->getCurrentPageIndex();
-            if (currentIndex < 0)
-               currentIndex = 0;
-            CCLOG("currentIndex:  %d", currentIndex);
-            if (currentIndex < mapImages.size() - 1)
-                pageView->scrollToPage(currentIndex + 1);
-        }
-        });
-    menuLayer->addChild(rightButton, 1); 
 }
+// 游戏菜单（已迁移到 GameMenuController）
 void BaseLevelScene::menu_all(Ref* pSender) {
-    Music::getInstance()->button_music();
-    Director::getInstance()->pause();
-    auto visibleSize = Director::getInstance()->getVisibleSize();
-    Vec2 origin = Director::getInstance()->getVisibleOrigin();
-    Size screenSize = Director::getInstance()->getWinSize();
-    auto menuLayer = LayerColor::create(Color4B(0, 0, 0, 150));
-    menuLayer->setPosition(Vec2::ZERO);
-    this->addChild(menuLayer, 10);
-    auto listener = EventListenerTouchOneByOne::create();
-    listener->setSwallowTouches(true);
-    listener->onTouchBegan = [menuLayer](Touch* touch, Event* event) {
-        return true;
-        };
-    Director::getInstance()->getEventDispatcher()->addEventListenerWithSceneGraphPriority(listener, menuLayer);
-    auto menuBackground = Sprite::create("CarrotGuardRes/UI/gameMenu.png");
-    menuBackground->setPosition(Vec2(visibleSize.width / 2 + origin.x, visibleSize.height / 2 + origin.y));
-    menuBackground->setScale(1.5f);
-    menuLayer->addChild(menuBackground, 0);
-    auto menu = Menu::create();
-    menu->setPosition(Vec2::ZERO);
-    menuLayer->addChild(menu, 1);
-    auto continueButton = MenuItemImage::create("CarrotGuardRes/UI/continueNormal.png", "CarrotGuardRes/UI/continueSelected.png");
-    continueButton->setPosition(Vec2(screenSize.width * 0.495, screenSize.height * 0.649));
-    continueButton->setScale(1.5);
-    auto restartButton = MenuItemImage::create("CarrotGuardRes/UI/restartNormal.png", "CarrotGuardRes/UI/restartSelected.png");
-    restartButton->setPosition(Vec2(screenSize.width * 0.495, screenSize.height * 0.51));
-    restartButton->setScale(1.5);
-    auto chooseButton = MenuItemImage::create("CarrotGuardRes/UI/chooseLevelNormal.png", "CarrotGuardRes/UI/chooseLevelSelected.png");
-    chooseButton->setPosition(Vec2(screenSize.width * 0.495, screenSize.height * 0.375));
-    chooseButton->setScale(1.5);
-    continueButton->setCallback([this, menuLayer](Ref* psender) {
-        Music::getInstance()->button_music();
-        this->removeChild(menuLayer);
-        if (!isGamePaused) {
-            Director::getInstance()->resume();
-        }
-        });
-    restartButton->setCallback([this, menuLayer](Ref* psender) {
-        Music::getInstance()->button_music();
-        this->removeChild(menuLayer);
-        GameManager::getInstance()->stopAllSchedulers();
-        manager->removeListener();
-        auto scene = BaseLevelScene::createScene(levelId);
-        scheduler->setTimeScale(1.0f);
-        Director::getInstance()->replaceScene(scene);
-        Director::getInstance()->resume();
-        });
-
-    chooseButton->setCallback([this, menuLayer](Ref* psender) {
-        Music::getInstance()->button_music();
-        saveGameState();
-        manager->saveMonstersDataToJson("level"+std::to_string(levelId)+"Monster.json");
-        saveTowerData();
-        this->removeChild(menuLayer);
-        GameManager::getInstance()->stopAllSchedulers();
-        manager->removeListener();
-        transitionToLevelSelectState();
-        });
-    menu->addChild(continueButton, 1);
-    menu->addChild(chooseButton, 1);
-    menu->addChild(restartButton, 1);
+    if (menuController_) {
+        menuController_->showGameMenu(pSender);
+    }
 }
 
 void BaseLevelScene::transitionToMenuState() {
@@ -321,100 +183,35 @@ void BaseLevelScene::guaisou_jiansu(float guai_jiansu) {
         }
     }
 }
+// 技能方法已迁移到 SkillController，这里作为包装方法
 void BaseLevelScene::Jineng1(Ref* pSender) {
-    Music::getInstance()->button_music();
-    if (getMoney() >= 200) {
-        updateMoney(-200);
-        manager->Jineng1();
+    if (skillController_) {
+        skillController_->executeSkill1(pSender);
     }
 }
 void BaseLevelScene::Jineng2(Ref* pSender) {
-    Music::getInstance()->button_music();
-    if (getMoney() >= 200) {
-        updateMoney(-200); 
-        guaisou_jiansu(0.01f);
-        beishu = 0.01f;
-        auto delayaction = Sequence::create(
-            DelayTime::create(5.0f),
-            CallFunc::create([=] {guaisou_jiansu(1); beishu = 1.0f; }),
-            nullptr);
-        this->runAction(delayaction);
+    if (skillController_) {
+        skillController_->executeSkill2(pSender);
     }
 }
 void BaseLevelScene::Jineng3(Ref* pSender) {
-    Music::getInstance()->button_music();
-    if (getMoney() >= 500) {
-        auto bong = Sprite::create();
-        if (!bong) {
-            CCLOG("Failed to create bong sprite.");
-            return;
-        }
-        bong->setPosition(480, 320);
-        bong->setScale(2);
-        this->addChild(bong);
-        cocos2d::Vector<cocos2d::SpriteFrame*> frames;
-        for (int i = 0; i <= 3; ++i) {
-            std::string frameName = "Carrot/bong/bong_" + std::to_string(i) + ".png";
-            auto frame = cocos2d::SpriteFrame::create(frameName, cocos2d::Rect(0, 0, 164, 160));
-            if (frame) {
-                frames.pushBack(frame);
-            }
-            else {
-                CCLOG("Failed to load frame: %s", frameName.c_str());
-            }
-        }
-        if (frames.empty()) {
-            CCLOG("No frames found for bong, skipping.");
-            return;
-        }
-        auto animation = cocos2d::Animation::createWithSpriteFrames(frames, 0.2f);
-        auto animate = cocos2d::Animate::create(animation);
-        auto onbong = cocos2d::CallFunc::create([bong]() {
-            CCLOG("bong.");
-            bong->removeFromParent();
-            });
-        Music::getInstance()->bongSound();
-        bong->runAction(cocos2d::Sequence::create(animate,onbong, nullptr));
-        updateMoney(-500);
-        if (manager) {
-            manager->KillAllMonsters();
-        } else {
-            auto instance = GameManager::getInstance();
-            if (instance) {
-                instance->KillAllMonsters();
-            }
-        }
+    if (skillController_) {
+        skillController_->executeSkill3(pSender);
     }
 }
 void BaseLevelScene::Jineng4(Ref* pSender) {
-    Music::getInstance()->button_music();
-    if (getMoney() >= 200) {
-        updateMoney(-200);
-        tower_jiasu = 2;
-        auto delayaction = Sequence::create(DelayTime::create(5.0f), CallFunc::create([=] {
-            tower_jiasu = 1;
-            }), nullptr);
-        this->runAction(delayaction);
+    if (skillController_) {
+        skillController_->executeSkill4(pSender);
     }
 }
 void BaseLevelScene::Jineng5(Ref* pSender) {
-    Music::getInstance()->button_music();
-    if (getMoney() >= 150) {
-        updateMoney(-150);
-        guaisou_jiansu(0.5f);
-        beishu = 0.5f;
-        auto delayaction = Sequence::create(
-            DelayTime::create(5.0f),
-            CallFunc::create([=] {guaisou_jiansu(1); beishu = 1.0f; }),
-            nullptr);
-        this->runAction(delayaction);
+    if (skillController_) {
+        skillController_->executeSkill5(pSender);
     }
 }
 void BaseLevelScene::Jineng6(Ref* pSender) {
-    Music::getInstance()->button_music();
-    if (getMoney() >= 200) {
-        updateMoney(-200);
-        manager->Jineng6();
+    if (skillController_) {
+        skillController_->executeSkill6(pSender);
     }
 }
 void BaseLevelScene::UpMenuAppear(Vec2& position)
@@ -792,76 +589,19 @@ void BaseLevelScene::registerCarrotShakeListeners() {
             b->runAction(cocos2d::Sequence::create(animate, onComplete, nullptr));
         });
 }
+// 倒计时（已迁移到 CountDownController）
 void BaseLevelScene::CountDown(std::function<void()> onComplete)
 {
-    auto countBackground = Sprite::create("CarrotGuardRes/UI/countBackground.png");
-    auto count1 = Sprite::create("CarrotGuardRes/UI/countOne.png");
-    auto count2 = Sprite::create("CarrotGuardRes/UI/countTwo.png");
-    auto count3 = Sprite::create("CarrotGuardRes/UI/countThree.png");
-    Label* count0 = Label::createWithSystemFont("GO", "Arial-BoldMT", 100);
-
-    countBackground->setPosition(480, 320);
-    count1->setPosition(480, 320);
-    count2->setPosition(480, 320);
-    count3->setPosition(480, 320);
-    count0->setPosition(480, 320);
-
-    countBackground->setVisible(false);
-    count1->setVisible(false);
-    count2->setVisible(false);
-    count3->setVisible(false);
-    count0->setVisible(false);
-
-    this->addChild(countBackground, 2);
-    this->addChild(count1, 2);
-    this->addChild(count2, 2);
-    this->addChild(count3, 2);
-    this->addChild(count0, 2);
-    auto countdown = Sequence::create(
-        CallFunc::create([=] {
-            countBackground->setVisible(true);
-            count3->setVisible(true);
-            Music::getInstance()->countSound();
-            }),
-        DelayTime::create(1),
-
-        CallFunc::create([=] {
-            this->removeChild(count3);
-            }),
-        CallFunc::create([=] {
-            count2->setVisible(true);
-            Music::getInstance()->countSound();
-            }),
-        DelayTime::create(1),
-
-        CallFunc::create([=] {
-            this->removeChild(count2);
-            }),
-        CallFunc::create([=] {
-            count1->setVisible(true);
-            Music::getInstance()->countSound();
-            }),
-        DelayTime::create(1),
-
-        CallFunc::create([=] {
-            this->removeChild(count1);
-            count0->setVisible(true);
-            Music::getInstance()->countSound();
-            }),
-        DelayTime::create(1),
-
-        CallFunc::create([=] {
-            this->removeChild(count0);
-            this->removeChild(countBackground);
-
-            if (onComplete) {
-                onComplete();
-            }
-            }),
-        nullptr
-    );
-    this->runAction(countdown);
+    if (countDownController_) {
+        countDownController_->startCountDown(onComplete);
+    } else if (onComplete) {
+        // 如果 Controller 未初始化，直接执行完成回调
+        onComplete();
+    }
 }
+
+
+
 bool BaseLevelScene::initWithLevel(int level)
 {
     if (!Scene::init())
@@ -873,14 +613,64 @@ bool BaseLevelScene::initWithLevel(int level)
     this->levelId = level;
     this->loadMap();
     manager = GameManager::getInstance(this);
-    manager->initLevel(level, !isNewGame[levelId - 1]);
-    initUI();
+    
+    // ✅ 先注册监听器，确保怪物创建事件能被正确处理
     registerOutcomeListeners();
     registerMonsterListeners();
     registerSpawnEffectListeners();
     registerCarrotShakeListeners();
-    registerMonsterSpawnListeners();
-    registerSpawnEffectListeners();
+    registerMonsterSpawnListeners();  // ✅ 必须在initLevel之前注册，否则读档时怪物无法添加到场景
+    
+    // 初始化关卡（包括创建怪物）
+    manager->initLevel(level, !isNewGame[levelId - 1]);
+    
+    // 初始化技能控制器
+    skillController_ = new SkillController();
+    SkillController::SkillCallbacks callbacks;
+    callbacks.getMoney = [this]() { return this->getMoney(); };
+    callbacks.updateMoney = [this](int add) { this->updateMoney(add); };
+    callbacks.applyMonsterSpeed = [this](float speed) { this->guaisou_jiansu(speed); };
+    callbacks.addChildToScene = [this](Node* node) { this->addChild(node); };
+    callbacks.runActionOnScene = [this](Action* action) { this->runAction(action); };
+    skillController_->init(callbacks, manager);
+    
+    // 初始化游戏菜单控制器
+    menuController_ = new GameMenuController();
+    GameMenuController::MenuCallbacks menuCallbacks;
+    menuCallbacks.addChildToScene = [this](Node* node) { this->addChild(node, 10); };
+    menuCallbacks.removeChildByName = [this](const std::string& name) { this->removeChildByName(name); };
+    menuCallbacks.removeChild = [this](Node* node) { this->removeChild(node); };
+    menuCallbacks.pauseDirector = []() { Director::getInstance()->pause(); };
+    menuCallbacks.resumeDirector = []() { Director::getInstance()->resume(); };
+    menuCallbacks.replaceScene = [](Scene* scene) { Director::getInstance()->replaceScene(scene); };
+    menuCallbacks.saveGameState = []() { GameManager::getInstance()->saveGameState(); };
+    menuCallbacks.saveTowerData = []() { GameManager::getInstance()->saveTowerData(); };
+    menuCallbacks.transitionToLevelSelectState = [this]() { this->transitionToLevelSelectState(); };
+    menuCallbacks.createLevelScene = [](int level) { return BaseLevelScene::createScene(level); };
+    menuCallbacks.getLevelId = [this]() { return this->levelId; };
+    menuCallbacks.isGamePaused = [this]() { return this->isGamePaused; };
+    menuCallbacks.stopAllSchedulers = []() { GameManager::getInstance()->stopAllSchedulers(); };
+    menuCallbacks.removeListener = [this]() { manager->removeListener(); };
+    menuCallbacks.saveMonstersData = [this](const std::string& filename) { manager->saveMonstersDataToJson(filename); };
+    menuCallbacks.setTimeScale = [this](float scale) { scheduler->setTimeScale(scale); };
+    menuController_->init(menuCallbacks);
+    
+    // 初始化游戏速度控制器
+    speedController_ = new GameSpeedController();
+    GameSpeedController::SpeedCallbacks speedCallbacks;
+    speedCallbacks.applyMonsterSpeed = [this](float speed) { this->guaisou_jiansu(speed); };
+    speedController_->init(speedCallbacks);
+    
+    // 初始化倒计时控制器
+    countDownController_ = new CountDownController();
+    CountDownController::CountDownCallbacks countDownCallbacks;
+    countDownCallbacks.addChildToScene = [this](Node* node) { this->addChild(node, 2); };
+    countDownCallbacks.removeChild = [this](Node* node) { this->removeChild(node); };
+    countDownCallbacks.runActionOnScene = [this](Action* action) { this->runAction(action); };
+    countDownController_->init(countDownCallbacks);
+    
+    initUI();
+    // ✅ 监听器已在initLevel之前注册（第617-621行），这里不再重复注册
     plantsLayer = Layer::create();
     this->addChild(plantsLayer, 10);
     addMouseListener();
@@ -898,7 +688,7 @@ bool BaseLevelScene::initWithLevel(int level)
     ObstacleFactoryProvider::initFactories();
     if (!isNewGame[levelId - 1])
     {
-        if (loadTowerData("level" + std::to_string(levelId) + "_tower.json") == false)
+        if (manager->loadTowerData("level" + std::to_string(levelId) + "_tower.json") == false)
             ProduceObstacles();
     }
     if (isNewGame[levelId - 1])  ProduceObstacles();
@@ -909,6 +699,12 @@ bool BaseLevelScene::initWithLevel(int level)
 
     CountDown([=] {
         CCLOG("READY");
+        // ✅ 恢复读档时创建的怪物的pause状态
+        for (auto* monster : manager->GetMonsters()) {
+            if (monster && monster->getPause()) {
+                monster->setPause(false);
+            }
+        }
         manager->startMonsterWaves();
         tower_jiasu = 1;
         });
@@ -922,7 +718,30 @@ bool BaseLevelScene::init() {
     if (!Scene::init()) {
         return false;
     }
+    skillController_ = nullptr;
+    menuController_ = nullptr;
+    speedController_ = nullptr;
+    countDownController_ = nullptr;
     return true;
+}
+
+BaseLevelScene::~BaseLevelScene() {
+    if (skillController_) {
+        delete skillController_;
+        skillController_ = nullptr;
+    }
+    if (menuController_) {
+        delete menuController_;
+        menuController_ = nullptr;
+    }
+    if (speedController_) {
+        delete speedController_;
+        speedController_ = nullptr;
+    }
+    if (countDownController_) {
+        delete countDownController_;
+        countDownController_ = nullptr;
+    }
 }
 // 每帧更新：刷新波次 UI、驱动塔攻击，并交给 GameManager 判定胜负
 void BaseLevelScene::update(float deltaTime) {
@@ -1164,162 +983,5 @@ Vec2 BaseLevelScene::gridToScreenCenter(const Vec2& gridPoint) {
     float screenX = gridPoint.x * tileSize.height + tileSize.width / 2;
     float screenY = (mapHeight - gridPoint.y - 1) * tileSize.height + tileSize.height / 2;
     return Vec2(screenX, screenY);
-}
-/************************************************/
-
-
-void BaseLevelScene::saveGameState() {
-
-    Document document;
-    document.SetObject();
-
-    rapidjson::Value GameState(kArrayType);
-
-    for (auto level : level_is_win) {
-        GameState.PushBack(rapidjson::Value(level), document.GetAllocator());
-    }
-
-    document.AddMember("levels", GameState, document.GetAllocator());
-
-    StringBuffer buffer;
-    Writer<StringBuffer> writer(buffer);
-    document.Accept(writer);
-
-    std::string writablePath = FileUtils::getInstance()->getWritablePath();
-
-    std::string filePath = writablePath + "level_state.json";
-
-    std::ofstream ofs(filePath);
-    if (ofs.is_open()) {
-        ofs << buffer.GetString();
-        ofs.close();
-        CCLOG("�浵�ɹ���%s", filePath.c_str());
-    }
-    else {
-        CCLOG("�浵ʧ�ܣ�%s", filePath.c_str());
-    }
-}
-void BaseLevelScene::saveTowerData()
-{
-    Document document;
-    document.SetObject();
-    rapidjson::Value towerArray(rapidjson::kArrayType);
-    for(int i=0;i<X;i++)
-    {
-     rapidjson::Value rowArray(rapidjson::kArrayType);
-     for (int j = 0; j < Y; j++)
-     {
-     rapidjson::Value towerObj(rapidjson::kObjectType);
-     towerObj.AddMember("flag",map_data[i][j].flag, document.GetAllocator());
-     if(map_data[i][j].flag==1)
-     {
-        towerObj.AddMember("index", towers[map_data[i][j].key]->GetIndex(), document.GetAllocator());
-        towerObj.AddMember("data", towers[map_data[i][j].key]->GetGrade(), document.GetAllocator());
-     }
-     else if(map_data[i][j].flag == 2)
-     {
-         towerObj.AddMember("index", Obstacles[map_data[i][j].key]->GetIndex(), document.GetAllocator());
-         towerObj.AddMember("data", Obstacles[map_data[i][j].key]->getHealth(), document.GetAllocator());
-     }
-     else {
-         towerObj.AddMember("index", 0, document.GetAllocator());
-         towerObj.AddMember("data", 0, document.GetAllocator());
-     }
-     rowArray.PushBack(towerObj, document.GetAllocator());
-     }
-     towerArray.PushBack(rowArray, document.GetAllocator());
-    }
-    document.AddMember("towers", towerArray,document.GetAllocator());
-    document.AddMember("money", getMoney(), document.GetAllocator());
-    StringBuffer buffer;
-    Writer<StringBuffer> writer(buffer);
-    document.Accept(writer);
-
-    std::string writablePath = FileUtils::getInstance()->getWritablePath();
-
-    std::string filePath = writablePath + "level"+std::to_string(levelId)+"_tower.json";
-
-    std::ofstream ofs(filePath);
-    if (ofs.is_open()) {
-        ofs << buffer.GetString();
-        ofs.close();
-        CCLOG("�浵�ɹ���%s", filePath.c_str());
-    }
-    else {
-        CCLOG("�浵ʧ�ܣ�%s", filePath.c_str());
-    }
-}
-bool BaseLevelScene::loadTowerData(const std::string& filename)
-{
-    std::string writablePath = FileUtils::getInstance()->getWritablePath();
-    std::string path = writablePath + filename ;
-    std::string fileContent = FileUtils::getInstance()->getStringFromFile(path);
-    rapidjson::Document doc;
-    doc.Parse(fileContent.c_str());
-    if (doc.HasParseError()) {
-        CCLOG("Error parsing JSON file: %s", filename.c_str());
-        return false;
-    }
-    if (doc.HasMember("towers") && doc["towers"].IsArray()) {
-        const rapidjson::Value& towersArray = doc["towers"];
-            if (towersArray.IsArray()) {
-                for (rapidjson::SizeType i = 0; i < towersArray.Size(); ++i) {
-                    const rapidjson::Value& row = towersArray[i];
-                    if (row.IsArray()) {
-                        for (rapidjson::SizeType j = 0; j < row.Size(); ++j) {
-                            const rapidjson::Value& towerObj = row[j];
-                            if (towerObj.IsObject()) {
-                                int flag = towerObj["flag"].GetInt();
-                                int index = towerObj["index"].GetInt();
-                                int data = towerObj["data"].GetInt();
-                                
-                               if(flag==1){
-                                   Vec2 pos= pos = Vec2((i+ 0.5) * CELL_SIZE, (j+0.5) * CELL_SIZE);
-                                   auto tower=TowerFactoryProvider::createTower(index,data);
-                                   tower->build(this,pos);
-                                   towers[map_data[i][j].key]=tower;
-                               }
-                               else if(flag==2&&map_data[i][j].flag==3){
-                                    auto obb = ObstacleFactoryProvider::createObstacle(index, this, i, j);
-                                    obb->setHealth(data);
-                                    obb->updateHealthBar();
-                                   Obstacles[map_data[i][j].key] = obb;
-                                   if(obb->GetSize()==2){
-                                       map_data[i + 1][j].flag = 2;
-                                       Obstacles[map_data[i + 1][j].key] = obb;
-                                   }
-                                   else if (obb->GetSize() ==4) {
-                                       map_data[i][j + 1].flag = map_data[i + 1][j].flag = map_data[i + 1][j + 1].flag = 2;
-                                       Obstacles[map_data[i + 1][j].key] = Obstacles[map_data[i][j + 1].key] = Obstacles[map_data[i + 1][j + 1].key] = obb;
-                                   }
-                               }
-                               map_data[i][j].flag = flag;
-                            }
-                        }
-                    }
-                }
-            }
-            else {
-                CCLOG("Towers data is not an array in level");
-                return false;
-            }
-        
-    }
-    if (doc.HasMember("money") && doc["money"].IsInt()) {
-        int savedMoney = doc["money"].GetInt();
-        if (manager) {
-            manager->SetMoney(savedMoney);
-        } else {
-            auto instance = GameManager::getInstance();
-            if (instance) {
-                instance->SetMoney(savedMoney);
-            }
-        }
-        CCLOG("INIT_MONEY:currentIndex: %d", getMoney());
-    } else {
-        CCLOG("No such level: %s", filename);
-        return false;
-    }
-    return true;
 }
 /************************************************/
