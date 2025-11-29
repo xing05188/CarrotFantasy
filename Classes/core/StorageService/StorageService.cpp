@@ -6,7 +6,7 @@
 #include "json/error/en.h"
 #include "../../scenes/BaseLevelScene.h"
 #include "../../entities/Tower/TowerFactory.h"
-#include "../../entities/Obstacle.h"
+#include "../../entities/Obstacle/Obstacle.h"
 #include <functional>
 
 USING_NS_CC;

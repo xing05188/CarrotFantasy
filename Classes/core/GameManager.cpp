@@ -13,7 +13,7 @@
 #include "../gameplay/events/MonsterEvents.h"
 #include "../gameplay/events/CarrotEvents.h"
 #include "../entities/Tower/TowerFactory.h"
-#include "../entities/Obstacle.h"
+#include "../entities/Obstacle/Obstacle.h"
 #include "StorageService/StorageService.h"
 
 USING_NS_CC;
