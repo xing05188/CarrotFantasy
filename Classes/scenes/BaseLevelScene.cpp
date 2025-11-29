@@ -30,6 +30,7 @@
 #include "gameplay/events/MonsterEvents.h"
 #include "gameplay/events/CarrotEvents.h"
 #include "entities/Tower/TowerFactory.h"
+#include "entities/Obstacle/ObstacleFactory.h"
 using namespace rapidjson;
 using namespace ui;
 //#define DEBUG_MODE
@@ -684,12 +685,14 @@ bool BaseLevelScene::initWithLevel(int level)
     index_table.push_back(2);
     index_table.push_back(3);
     InitMapData();
+    ObstacleFactoryProvider::initFactories();
     if (!isNewGame[levelId - 1])
     {
         if (manager->loadTowerData("level" + std::to_string(levelId) + "_tower.json") == false)
             ProduceObstacles();
     }
     if (isNewGame[levelId - 1])  ProduceObstacles();
+    ObstacleFactoryProvider::cleanup();
 
     tower_jiasu = 0.01;
     beishu = 1;
@@ -786,8 +789,7 @@ void BaseLevelScene::ProduceObstacles()
                     continue;
                 }
                 map_data[i][j].flag = 2;
-                auto obb = new Obstacle(index);
-                obb->Produce(this, i, j);
+                auto obb = ObstacleFactoryProvider::createObstacle(index, this, i, j);
                 Obstacles[map_data[i][j].key] = obb;
                 if (index == 5) {
                     map_data[i + 1][j].flag = 2;
