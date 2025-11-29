@@ -7,6 +7,7 @@
 #include"music.h"
 #include"themeScene.h"
 #include"GameManager.h"
+#include "scenes/controllers/SkillController.h"
 #include<string>
 #include "json/writer.h"
 #include"obpos.h"
@@ -320,100 +321,35 @@ void BaseLevelScene::guaisou_jiansu(float guai_jiansu) {
         }
     }
 }
+// 技能方法已迁移到 SkillController，这里作为包装方法
 void BaseLevelScene::Jineng1(Ref* pSender) {
-    Music::getInstance()->button_music();
-    if (getMoney() >= 200) {
-        updateMoney(-200);
-        manager->Jineng1();
+    if (skillController_) {
+        skillController_->executeSkill1(pSender);
     }
 }
 void BaseLevelScene::Jineng2(Ref* pSender) {
-    Music::getInstance()->button_music();
-    if (getMoney() >= 200) {
-        updateMoney(-200); 
-        guaisou_jiansu(0.01f);
-        beishu = 0.01f;
-        auto delayaction = Sequence::create(
-            DelayTime::create(5.0f),
-            CallFunc::create([=] {guaisou_jiansu(1); beishu = 1.0f; }),
-            nullptr);
-        this->runAction(delayaction);
+    if (skillController_) {
+        skillController_->executeSkill2(pSender);
     }
 }
 void BaseLevelScene::Jineng3(Ref* pSender) {
-    Music::getInstance()->button_music();
-    if (getMoney() >= 500) {
-        auto bong = Sprite::create();
-        if (!bong) {
-            CCLOG("Failed to create bong sprite.");
-            return;
-        }
-        bong->setPosition(480, 320);
-        bong->setScale(2);
-        this->addChild(bong);
-        cocos2d::Vector<cocos2d::SpriteFrame*> frames;
-        for (int i = 0; i <= 3; ++i) {
-            std::string frameName = "Carrot/bong/bong_" + std::to_string(i) + ".png";
-            auto frame = cocos2d::SpriteFrame::create(frameName, cocos2d::Rect(0, 0, 164, 160));
-            if (frame) {
-                frames.pushBack(frame);
-            }
-            else {
-                CCLOG("Failed to load frame: %s", frameName.c_str());
-            }
-        }
-        if (frames.empty()) {
-            CCLOG("No frames found for bong, skipping.");
-            return;
-        }
-        auto animation = cocos2d::Animation::createWithSpriteFrames(frames, 0.2f);
-        auto animate = cocos2d::Animate::create(animation);
-        auto onbong = cocos2d::CallFunc::create([bong]() {
-            CCLOG("bong.");
-            bong->removeFromParent();
-            });
-        Music::getInstance()->bongSound();
-        bong->runAction(cocos2d::Sequence::create(animate,onbong, nullptr));
-        updateMoney(-500);
-        if (manager) {
-            manager->KillAllMonsters();
-        } else {
-            auto instance = GameManager::getInstance();
-            if (instance) {
-                instance->KillAllMonsters();
-            }
-        }
+    if (skillController_) {
+        skillController_->executeSkill3(pSender);
     }
 }
 void BaseLevelScene::Jineng4(Ref* pSender) {
-    Music::getInstance()->button_music();
-    if (getMoney() >= 200) {
-        updateMoney(-200);
-        tower_jiasu = 2;
-        auto delayaction = Sequence::create(DelayTime::create(5.0f), CallFunc::create([=] {
-            tower_jiasu = 1;
-            }), nullptr);
-        this->runAction(delayaction);
+    if (skillController_) {
+        skillController_->executeSkill4(pSender);
     }
 }
 void BaseLevelScene::Jineng5(Ref* pSender) {
-    Music::getInstance()->button_music();
-    if (getMoney() >= 150) {
-        updateMoney(-150);
-        guaisou_jiansu(0.5f);
-        beishu = 0.5f;
-        auto delayaction = Sequence::create(
-            DelayTime::create(5.0f),
-            CallFunc::create([=] {guaisou_jiansu(1); beishu = 1.0f; }),
-            nullptr);
-        this->runAction(delayaction);
+    if (skillController_) {
+        skillController_->executeSkill5(pSender);
     }
 }
 void BaseLevelScene::Jineng6(Ref* pSender) {
-    Music::getInstance()->button_music();
-    if (getMoney() >= 200) {
-        updateMoney(-200);
-        manager->Jineng6();
+    if (skillController_) {
+        skillController_->executeSkill6(pSender);
     }
 }
 void BaseLevelScene::UpMenuAppear(Vec2& position)
@@ -873,6 +809,17 @@ bool BaseLevelScene::initWithLevel(int level)
     this->loadMap();
     manager = GameManager::getInstance(this);
     manager->initLevel(level, !isNewGame[levelId - 1]);
+    
+    // 初始化技能控制器
+    skillController_ = new SkillController();
+    SkillController::SkillCallbacks callbacks;
+    callbacks.getMoney = [this]() { return this->getMoney(); };
+    callbacks.updateMoney = [this](int add) { this->updateMoney(add); };
+    callbacks.applyMonsterSpeed = [this](float speed) { this->guaisou_jiansu(speed); };
+    callbacks.addChildToScene = [this](Node* node) { this->addChild(node); };
+    callbacks.runActionOnScene = [this](Action* action) { this->runAction(action); };
+    skillController_->init(callbacks, manager);
+    
     initUI();
     registerOutcomeListeners();
     registerMonsterListeners();
@@ -919,7 +866,15 @@ bool BaseLevelScene::init() {
     if (!Scene::init()) {
         return false;
     }
+    skillController_ = nullptr;
     return true;
+}
+
+BaseLevelScene::~BaseLevelScene() {
+    if (skillController_) {
+        delete skillController_;
+        skillController_ = nullptr;
+    }
 }
 // 每帧更新：刷新波次 UI、驱动塔攻击，并交给 GameManager 判定胜负
 void BaseLevelScene::update(float deltaTime) {

@@ -17,6 +17,9 @@
 
 USING_NS_CC;
 
+// 前向声明
+class SkillController;
+
 #define Y 9
 #define X 15
 
@@ -40,6 +43,8 @@ class MoneyHud;
 }
 
 class BaseLevelScene : public cocos2d::Scene {
+public:
+    virtual ~BaseLevelScene();
 private:
     cocos2d::Node* plantsLayer;                              //ֲ��ͼ��
     TMXLayer* plantableLayer = nullptr;                      // plantable ��
@@ -60,6 +65,8 @@ private:
     std::shared_ptr<carrot::core::Subscription> carrotShakeSubscription;
     std::shared_ptr<carrot::core::Subscription> monsterSpawnSubscription;
 
+    // 技能控制器
+    SkillController* skillController_;
 
     //�������
     std::vector<Sprite*>remove_table;                        //removeʱ�ķ���
