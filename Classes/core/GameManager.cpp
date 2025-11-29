@@ -240,8 +240,6 @@ void GameManager::loadMonsterResources() {
     SpriteFrameCache::getInstance()->addSpriteFramesWithFile("Monsters/star.plist");
     SpriteFrameCache::getInstance()->addSpriteFramesWithFile("Monsters/bubble.plist");
     SpriteFrameCache::getInstance()->addSpriteFramesWithFile("Monsters/fuck.plist");
-    SpriteFrameCache::getInstance()->addSpriteFramesWithFile("Monsters/xin.plist");
-    SpriteFrameCache::getInstance()->addSpriteFramesWithFile("Monsters/yuxin.plist");
     SpriteFrameCache::getInstance()->addSpriteFramesWithFile("Monsters/BossYellow.plist");
     SpriteFrameCache::getInstance()->addSpriteFramesWithFile("Monsters/BossSheep.plist");
     if (!SpriteFrameCache::getInstance()->getSpriteFrameByName("pig_0.png")) {
@@ -311,18 +309,6 @@ void GameManager::loadMonsterResources() {
     if (!SpriteFrameCache::getInstance()->getSpriteFrameByName("biao_1.png")) {
         CCLOG("Failed to load SpriteFrame 'biao_1.png'.");
     }
-    if (!SpriteFrameCache::getInstance()->getSpriteFrameByName("yuxin_0.png")) {
-        CCLOG("Failed to load SpriteFrame 'yuxin_0.png'.");
-    }
-    if (!SpriteFrameCache::getInstance()->getSpriteFrameByName("yuxin_1.png")) {
-        CCLOG("Failed to load SpriteFrame 'yuxin_1.png'.");
-    }
-    if (!SpriteFrameCache::getInstance()->getSpriteFrameByName("xin_0.png")) {
-        CCLOG("Failed to load SpriteFrame 'xin_0.png'.");
-    }
-    if (!SpriteFrameCache::getInstance()->getSpriteFrameByName("xin_1.png")) {
-        CCLOG("Failed to load SpriteFrame 'xin_1.png'.");
-    }
     if (!SpriteFrameCache::getInstance()->getSpriteFrameByName("BossYellow_0.png")) {
         CCLOG("Failed to load SpriteFrame 'BossYellow_0.png'.");
     }
@@ -346,6 +332,14 @@ void GameManager::produceMonsters(const std::string monsterName, const int start
         CCLOG("Failed to create monster.");
         return;
     }
+    // Diagnostic: log parent pointer immediately after creation to detect unexpected parenting
+    if (Monster->getParent()) {
+        auto parent = Monster->getParent();
+        const char* pname = parent->getName().c_str();
+        CCLOG("GameManager::produceMonsters: Created monster already has parent! Monster=%p, parent=%p, parentName=%s", Monster, parent, pname);
+    } else {
+        CCLOG("GameManager::produceMonsters: Created monster has no parent yet. Monster=%p", Monster);
+    }
     monsters.push_back(Monster);
     CCLOG("");
     // 由事件通知场景把怪物节点挂到合适的位置/层级上
@@ -354,6 +348,24 @@ void GameManager::produceMonsters(const std::string monsterName, const int start
         carrot::gameplay::events::MonsterSpawnedEvent evt{};
         evt.monster = Monster;
         bus->Publish(carrot::gameplay::events::kMonsterSpawnedEventId, evt);
+    }
+    // If no listener added the monster to the scene (or it was added to wrong parent), ensure it's attached to currentScene
+    if (Monster->getParent() == nullptr) {
+        if (currentScene) {
+            CCLOG("GameManager::produceMonsters: No subscriber added monster, attaching to currentScene. Monster=%p", Monster);
+            currentScene->addChild(Monster);
+        } else {
+            CCLOG("GameManager::produceMonsters: currentScene is null, cannot attach monster. Monster=%p", Monster);
+        }
+    } else if (Monster->getParent() != currentScene) {
+        // 如果怪物被错误地添加到其他节点，先移除再挂到当前场景
+        auto oldParent = Monster->getParent();
+        CCLOG("GameManager::produceMonsters: Monster has parent %p (name=%s), reparenting to currentScene %p. Monster=%p",
+              oldParent, oldParent->getName().c_str(), currentScene, Monster);
+        oldParent->removeChild(Monster);
+        if (currentScene) {
+            currentScene->addChild(Monster);
+        }
     }
     Monster->setPause(pause);
     CCLOG("MONSTER PAUSE  %d", Monster->getPause());
@@ -631,7 +643,15 @@ void GameManager::doudong() {
 }
 void GameManager::initCarrot() {
     carrot = Carrot::create(10, dst1[levelId - 1], dst2[levelId - 1]);
-    currentScene->addChild(carrot, 1);
+    if (carrot) {
+        if (carrot->getParent() == nullptr) {
+            currentScene->addChild(carrot, 1);
+        } else {
+            CCLOG("GameManager::initCarrot: carrot already has parent, skipping addChild.");
+        }
+    } else {
+        CCLOG("GameManager::initCarrot: Failed to create carrot.");
+    }
     CCLOG("CARROT READY!");
 }
 

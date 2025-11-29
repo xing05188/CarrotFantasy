@@ -13,6 +13,9 @@ USING_NS_CC;
 
 // 单例实例指针
 StorageService* StorageService::instance = nullptr;
+#define CELL_SIZE 64
+#define X_SIZE 15
+#define Y_SIZE 9
 
 StorageService* StorageService::getInstance() {
     if (!instance) {
@@ -79,11 +82,6 @@ bool StorageService::saveTowerData(BaseLevelScene* scene, int levelId, int money
         CCLOG("StorageService: scene is null, cannot save tower data");
         return false;
     }
-
-    const int CELL_SIZE = 64;
-    const int X_SIZE = 15;
-    const int Y_SIZE = 9;
-
     rapidjson::Document document;
     document.SetObject();
     rapidjson::Value towerArray(rapidjson::kArrayType);
@@ -142,11 +140,6 @@ bool StorageService::loadTowerData(BaseLevelScene* scene, const std::string& fil
         CCLOG("StorageService::loadTowerData: ERROR - scene is null, cannot load tower data");
         return false;
     }
-
-    const int CELL_SIZE = 64;
-    const int X_SIZE = 15;
-    const int Y_SIZE = 9;
-
     std::string writablePath = getWritablePath();
     std::string path = writablePath + filename;
     std::string fileContent = readJsonFile(path);
@@ -234,4 +227,3 @@ bool StorageService::loadTowerData(BaseLevelScene* scene, const std::string& fil
     
     return true;
 }
-
