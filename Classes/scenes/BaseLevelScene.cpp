@@ -692,6 +692,12 @@ bool BaseLevelScene::initWithLevel(int level)
 
     CountDown([=] {
         CCLOG("READY");
+        // ✅ 恢复读档时创建的怪物的pause状态
+        for (auto* monster : manager->GetMonsters()) {
+            if (monster && monster->getPause()) {
+                monster->setPause(false);
+            }
+        }
         manager->startMonsterWaves();
         tower_jiasu = 1;
         });
