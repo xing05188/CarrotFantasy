@@ -132,12 +132,7 @@ void Tower::UpMenuGone(BaseLevelScene* my_scene)
 template<class T>
 void DemageSprite(T*sp,int demage)
 {
-	
 	sp->getHurt(demage);
-	if (!sp->getHpVisibleState()) {
-		sp->setHpVisible(true);
-	}
-	sp->updateHealthBar();
 }
 
 
