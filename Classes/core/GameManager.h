@@ -1,4 +1,4 @@
-#pragma once
+﻿#pragma once
 
 #include "cocos2d.h"
 #include "entities/Monster/Monster.h"
@@ -56,8 +56,7 @@ public:
     void stopAllSchedulers();                                //ֹͣmanager�����е�����
     GameManager(const GameManager&) = delete;               
     GameManager& operator=(const GameManager&) = delete;     // ���ÿ����͸�ֵ
-    static GameManager* getInstance
-    (BaseLevelScene* scene = nullptr);                       // ������ȡ����
+    static GameManager* getInstance(BaseLevelScene* scene = nullptr);                       // ������ȡ����
     void setScene(BaseLevelScene* scene);                    //���õ�ǰ����
     BaseLevelScene* getScene() const;                        // ��ȡ��ǰ����
     static void destroyInstance();                           //�ͷ�ʵ��
@@ -69,8 +68,7 @@ public:
     void initLevel(int level, bool ReadMode);                // ��ʼ���ؿ�����
     void initPath();                                         // ��ʼ��·��
     // �������
-    void loadMonsterWaveConfig
-    (const std::string& filename, const std::string& levelName);//���ع��޲�����
+    void loadMonsterWaveConfig(const std::string& filename, const std::string& levelName);//���ع��޲�����
     void loadMonsterResources();                             //���ع�����Դ
     void produceMonsters(const std::string monsterName,
         const int startIndex,int health,bool pause=false);
@@ -95,6 +93,10 @@ public:
                                                              //���ص�ͼ����
     void saveMonstersDataToJson(const std::string& fileName);//�洢��������
     Vec2 gridToScreenCenter(const Vec2& gridPoint);
+    // 存档/读档功能
+    void saveGameState();                                        //保存关卡状态
+    void saveTowerData();                                        //保存塔和障碍物数据
+    bool loadTowerData(const std::string& filename);             //加载塔和障碍物数据
  //ʱ�����
     void registerListener();                                 // ע���¼�������
     void removeListener() ;                                  // �Ƴ��¼�������

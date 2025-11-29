@@ -118,8 +118,6 @@ public:
     void drawGrid();                                        //��������
     void UpMenuAppear(Vec2& position);                      //�����˵�����
     void UpMenuGone(Vec2& position);                        //�����˵���ʧ
-    void saveTowerData();
-    bool loadTowerData(const std::string& filename);
     Vec2 gridToScreenCenter(const Vec2& gridPoint);         //����������ת����Ļ����Ĺ��ߺ���
 
     //��ť
@@ -139,7 +137,7 @@ public:
     void Jineng6(Ref* pSender);                                  //�ܲ�޵�״̬
     void guaisou_jiansu(float guai_jiansu);
 
-    void saveGameState();                                        //ͨ������浵
+    // 读档相关
     Monster* IsTargetMonster(const Vec2& pos);                   //����Ƿ��й��ﱻ����
     void transitionToMenuState();
     void transitionToLevelSelectState();

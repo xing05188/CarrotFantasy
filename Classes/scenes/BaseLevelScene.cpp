@@ -642,8 +642,8 @@ bool BaseLevelScene::initWithLevel(int level)
     menuCallbacks.pauseDirector = []() { Director::getInstance()->pause(); };
     menuCallbacks.resumeDirector = []() { Director::getInstance()->resume(); };
     menuCallbacks.replaceScene = [](Scene* scene) { Director::getInstance()->replaceScene(scene); };
-    menuCallbacks.saveGameState = [this]() { this->saveGameState(); };
-    menuCallbacks.saveTowerData = [this]() { this->saveTowerData(); };
+    menuCallbacks.saveGameState = []() { GameManager::getInstance()->saveGameState(); };
+    menuCallbacks.saveTowerData = []() { GameManager::getInstance()->saveTowerData(); };
     menuCallbacks.transitionToLevelSelectState = [this]() { this->transitionToLevelSelectState(); };
     menuCallbacks.createLevelScene = [](int level) { return BaseLevelScene::createScene(level); };
     menuCallbacks.getLevelId = [this]() { return this->levelId; };
@@ -686,7 +686,7 @@ bool BaseLevelScene::initWithLevel(int level)
     InitMapData();
     if (!isNewGame[levelId - 1])
     {
-        if (loadTowerData("level" + std::to_string(levelId) + "_tower.json") == false)
+        if (manager->loadTowerData("level" + std::to_string(levelId) + "_tower.json") == false)
             ProduceObstacles();
     }
     if (isNewGame[levelId - 1])  ProduceObstacles();
@@ -981,163 +981,5 @@ Vec2 BaseLevelScene::gridToScreenCenter(const Vec2& gridPoint) {
     float screenX = gridPoint.x * tileSize.height + tileSize.width / 2;
     float screenY = (mapHeight - gridPoint.y - 1) * tileSize.height + tileSize.height / 2;
     return Vec2(screenX, screenY);
-}
-/************************************************/
-
-
-void BaseLevelScene::saveGameState() {
-
-    Document document;
-    document.SetObject();
-
-    rapidjson::Value GameState(kArrayType);
-
-    for (auto level : level_is_win) {
-        GameState.PushBack(rapidjson::Value(level), document.GetAllocator());
-    }
-
-    document.AddMember("levels", GameState, document.GetAllocator());
-
-    StringBuffer buffer;
-    Writer<StringBuffer> writer(buffer);
-    document.Accept(writer);
-
-    std::string writablePath = FileUtils::getInstance()->getWritablePath();
-
-    std::string filePath = writablePath + "level_state.json";
-
-    std::ofstream ofs(filePath);
-    if (ofs.is_open()) {
-        ofs << buffer.GetString();
-        ofs.close();
-        CCLOG("�浵�ɹ���%s", filePath.c_str());
-    }
-    else {
-        CCLOG("�浵ʧ�ܣ�%s", filePath.c_str());
-    }
-}
-void BaseLevelScene::saveTowerData()
-{
-    Document document;
-    document.SetObject();
-    rapidjson::Value towerArray(rapidjson::kArrayType);
-    for(int i=0;i<X;i++)
-    {
-     rapidjson::Value rowArray(rapidjson::kArrayType);
-     for (int j = 0; j < Y; j++)
-     {
-     rapidjson::Value towerObj(rapidjson::kObjectType);
-     towerObj.AddMember("flag",map_data[i][j].flag, document.GetAllocator());
-     if(map_data[i][j].flag==1)
-     {
-        towerObj.AddMember("index", towers[map_data[i][j].key]->GetIndex(), document.GetAllocator());
-        towerObj.AddMember("data", towers[map_data[i][j].key]->GetGrade(), document.GetAllocator());
-     }
-     else if(map_data[i][j].flag == 2)
-     {
-         towerObj.AddMember("index", Obstacles[map_data[i][j].key]->GetIndex(), document.GetAllocator());
-         towerObj.AddMember("data", Obstacles[map_data[i][j].key]->getHealth(), document.GetAllocator());
-     }
-     else {
-         towerObj.AddMember("index", 0, document.GetAllocator());
-         towerObj.AddMember("data", 0, document.GetAllocator());
-     }
-     rowArray.PushBack(towerObj, document.GetAllocator());
-     }
-     towerArray.PushBack(rowArray, document.GetAllocator());
-    }
-    document.AddMember("towers", towerArray,document.GetAllocator());
-    document.AddMember("money", getMoney(), document.GetAllocator());
-    StringBuffer buffer;
-    Writer<StringBuffer> writer(buffer);
-    document.Accept(writer);
-
-    std::string writablePath = FileUtils::getInstance()->getWritablePath();
-
-    std::string filePath = writablePath + "level"+std::to_string(levelId)+"_tower.json";
-
-    std::ofstream ofs(filePath);
-    if (ofs.is_open()) {
-        ofs << buffer.GetString();
-        ofs.close();
-        CCLOG("�浵�ɹ���%s", filePath.c_str());
-    }
-    else {
-        CCLOG("�浵ʧ�ܣ�%s", filePath.c_str());
-    }
-}
-bool BaseLevelScene::loadTowerData(const std::string& filename)
-{
-    std::string writablePath = FileUtils::getInstance()->getWritablePath();
-    std::string path = writablePath + filename ;
-    std::string fileContent = FileUtils::getInstance()->getStringFromFile(path);
-    rapidjson::Document doc;
-    doc.Parse(fileContent.c_str());
-    if (doc.HasParseError()) {
-        CCLOG("Error parsing JSON file: %s", filename.c_str());
-        return false;
-    }
-    if (doc.HasMember("towers") && doc["towers"].IsArray()) {
-        const rapidjson::Value& towersArray = doc["towers"];
-            if (towersArray.IsArray()) {
-                for (rapidjson::SizeType i = 0; i < towersArray.Size(); ++i) {
-                    const rapidjson::Value& row = towersArray[i];
-                    if (row.IsArray()) {
-                        for (rapidjson::SizeType j = 0; j < row.Size(); ++j) {
-                            const rapidjson::Value& towerObj = row[j];
-                            if (towerObj.IsObject()) {
-                                int flag = towerObj["flag"].GetInt();
-                                int index = towerObj["index"].GetInt();
-                                int data = towerObj["data"].GetInt();
-                                
-                               if(flag==1){
-                                   Vec2 pos= pos = Vec2((i+ 0.5) * CELL_SIZE, (j+0.5) * CELL_SIZE);
-                                   auto tower=TowerFactoryProvider::createTower(index,data);
-                                   tower->build(this,pos);
-                                   towers[map_data[i][j].key]=tower;
-                               }
-                               else if(flag==2&&map_data[i][j].flag==3){
-                                   auto obb = new Obstacle(index);
-                                   obb->Produce(this, i, j);
-                                    obb->setHealth(data);
-                                    obb->updateHealthBar();
-                                   Obstacles[map_data[i][j].key] = obb;
-                                   if(obb->GetSize()==2){
-                                       map_data[i + 1][j].flag = 2;
-                                       Obstacles[map_data[i + 1][j].key] = obb;
-                                   }
-                                   else if (obb->GetSize() ==4) {
-                                       map_data[i][j + 1].flag = map_data[i + 1][j].flag = map_data[i + 1][j + 1].flag = 2;
-                                       Obstacles[map_data[i + 1][j].key] = Obstacles[map_data[i][j + 1].key] = Obstacles[map_data[i + 1][j + 1].key] = obb;
-                                   }
-                               }
-                               map_data[i][j].flag = flag;
-                            }
-                        }
-                    }
-                }
-            }
-            else {
-                CCLOG("Towers data is not an array in level");
-                return false;
-            }
-        
-    }
-    if (doc.HasMember("money") && doc["money"].IsInt()) {
-        int savedMoney = doc["money"].GetInt();
-        if (manager) {
-            manager->SetMoney(savedMoney);
-        } else {
-            auto instance = GameManager::getInstance();
-            if (instance) {
-                instance->SetMoney(savedMoney);
-            }
-        }
-        CCLOG("INIT_MONEY:currentIndex: %d", getMoney());
-    } else {
-        CCLOG("No such level: %s", filename);
-        return false;
-    }
-    return true;
 }
 /************************************************/

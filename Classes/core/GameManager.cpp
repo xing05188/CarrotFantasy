@@ -1,4 +1,4 @@
-#include"GameManager.h"
+﻿#include"GameManager.h"
 #include<vector>
 #include "json/document.h"
 #include "json/rapidjson.h"
@@ -12,6 +12,8 @@
 #include "../gameplay/events/GameFlowEvents.h"
 #include "../gameplay/events/MonsterEvents.h"
 #include "../gameplay/events/CarrotEvents.h"
+#include "../entities/Tower/TowerFactory.h"
+#include "../entities/Obstacle.h"
 
 USING_NS_CC;
 extern int DeadCount;
@@ -67,7 +69,7 @@ bool GameManager::CheckWin()
     if (waveIndex + 1 < AllWaveNum) return false;
     if (carrot->getHP() <= 0) return false;
     CCLOG("------------------------------------%d", monsters.size());
-    if (monsters.size() < AllMonsterNum) return false;
+    if (monsters.size() < static_cast<size_t>(AllMonsterNum)) return false;
     for (auto it = monsters.begin(); it != monsters.end(); it++) {
         if ((*it)->getHealth() > 0) return false;
     }
@@ -418,7 +420,7 @@ void GameManager::startMonsterWaves() {
     CCLOG("Starting wave %d", waveIndex);
     produceMonsterWave(waveConfigs[waveIndex]);
     cocos2d::Director::getInstance()->getScheduler()->schedule([this](float) {
-        if (waveIndex >= waveConfigs.size() - 1) {
+        if (waveIndex >= static_cast<int>(waveConfigs.size()) - 1) {
             CCLOG("All waves are complete.");
             cocos2d::Director::getInstance()->getScheduler()->unschedule("startWave", this);
             return;
@@ -478,11 +480,11 @@ bool GameManager::loadGameData(const std::string& fileName) {
     waveConfigs.clear();
     WaveConfig waveConfig;
     std::string filePath = cocos2d::FileUtils::getInstance()->getWritablePath() + fileName;
-    CCLOG("���ڼ��ش浵�ļ�: %s", filePath.c_str());
+    CCLOG("Loading save file: %s", filePath.c_str());
 
     std::ifstream ifs(filePath);
     if (!ifs.is_open()) {
-        CCLOG("�޷��򿪴浵�ļ���%s", filePath.c_str());
+        CCLOG("Cannot open save file: %s", filePath.c_str());
         return false;
     }
 
@@ -490,11 +492,11 @@ bool GameManager::loadGameData(const std::string& fileName) {
     buffer << ifs.rdbuf();
     std::string fileContent = buffer.str();
     ifs.close();
-    CCLOG("�ļ�����: %s", fileContent.c_str());
+    CCLOG("File content: %s", fileContent.c_str());
 
     rapidjson::Document document;
     if (document.Parse(fileContent.c_str()).HasParseError()) {
-        CCLOG("JSON ��������");
+        CCLOG("JSON parse error");
         return false;
     }
 
@@ -595,10 +597,10 @@ void GameManager::saveMonstersDataToJson(const std::string& fileName) {
     if (ofs.is_open()) {
         ofs << buffer.GetString();
         ofs.close();
-        CCLOG("�浵�ɹ���%s", filePath.c_str());
+        CCLOG("Save success: %s", filePath.c_str());
     }
     else {
-        CCLOG("�浵ʧ�ܣ�%s", filePath.c_str());
+        CCLOG("Save failed: %s", filePath.c_str());
     }
 }
 void GameManager::doudong() {
@@ -716,4 +718,189 @@ Vec2 GameManager::gridToScreenCenter(const Vec2& gridPoint) {
     float screenX = gridPoint.x * (currentScene->tileSize.height) + (currentScene->tileSize.width) / 2;
     float screenY = (mapHeight - gridPoint.y - 1) * (currentScene->tileSize.height) + (currentScene->tileSize.height) / 2;
     return Vec2(screenX, screenY);
+}
+
+// 存档/读档功能实现
+void GameManager::saveGameState() {
+    extern bool level_is_win[3];
+    
+    rapidjson::Document document;
+    document.SetObject();
+
+    rapidjson::Value GameState(rapidjson::kArrayType);
+
+    for (auto level : level_is_win) {
+        GameState.PushBack(rapidjson::Value(level), document.GetAllocator());
+    }
+
+    document.AddMember("levels", GameState, document.GetAllocator());
+
+    rapidjson::StringBuffer buffer;
+    rapidjson::Writer<rapidjson::StringBuffer> writer(buffer);
+    document.Accept(writer);
+
+    std::string writablePath = FileUtils::getInstance()->getWritablePath();
+    std::string filePath = writablePath + "level_state.json";
+
+    std::ofstream ofs(filePath);
+    if (ofs.is_open()) {
+        ofs << buffer.GetString();
+        ofs.close();
+        CCLOG("Save success: %s", filePath.c_str());
+    }
+    else {
+        CCLOG("Save failed: %s", filePath.c_str());
+    }
+}
+
+void GameManager::saveTowerData() {
+    if (!currentScene) {
+        CCLOG("GameManager: currentScene is null, cannot save tower data");
+        return;
+    }
+
+    const int CELL_SIZE = 64;
+    const int X_SIZE = 15;
+    const int Y_SIZE = 9;
+
+    rapidjson::Document document;
+    document.SetObject();
+    rapidjson::Value towerArray(rapidjson::kArrayType);
+    
+    for (int i = 0; i < X_SIZE; i++) {
+        rapidjson::Value rowArray(rapidjson::kArrayType);
+        for (int j = 0; j < Y_SIZE; j++) {
+            rapidjson::Value towerObj(rapidjson::kObjectType);
+            towerObj.AddMember("flag", currentScene->map_data[i][j].flag, document.GetAllocator());
+            if (currentScene->map_data[i][j].flag == 1) {
+                auto it = currentScene->towers.find(currentScene->map_data[i][j].key);
+                if (it != currentScene->towers.end()) {
+                    towerObj.AddMember("index", it->second->GetIndex(), document.GetAllocator());
+                    towerObj.AddMember("data", it->second->GetGrade(), document.GetAllocator());
+                } else {
+                    towerObj.AddMember("index", 0, document.GetAllocator());
+                    towerObj.AddMember("data", 0, document.GetAllocator());
+                }
+            }
+            else if (currentScene->map_data[i][j].flag == 2) {
+                auto it = currentScene->Obstacles.find(currentScene->map_data[i][j].key);
+                if (it != currentScene->Obstacles.end()) {
+                    towerObj.AddMember("index", it->second->GetIndex(), document.GetAllocator());
+                    towerObj.AddMember("data", it->second->getHealth(), document.GetAllocator());
+                } else {
+                    towerObj.AddMember("index", 0, document.GetAllocator());
+                    towerObj.AddMember("data", 0, document.GetAllocator());
+                }
+            }
+            else {
+                towerObj.AddMember("index", 0, document.GetAllocator());
+                towerObj.AddMember("data", 0, document.GetAllocator());
+            }
+            rowArray.PushBack(towerObj, document.GetAllocator());
+        }
+        towerArray.PushBack(rowArray, document.GetAllocator());
+    }
+    
+    document.AddMember("towers", towerArray, document.GetAllocator());
+    document.AddMember("money", GetMoney(), document.GetAllocator());
+    
+    rapidjson::StringBuffer buffer;
+    rapidjson::Writer<rapidjson::StringBuffer> writer(buffer);
+    document.Accept(writer);
+
+    std::string writablePath = FileUtils::getInstance()->getWritablePath();
+    std::string filePath = writablePath + "level" + std::to_string(levelId) + "_tower.json";
+
+    std::ofstream ofs(filePath);
+    if (ofs.is_open()) {
+        ofs << buffer.GetString();
+        ofs.close();
+        CCLOG("Save success: %s", filePath.c_str());
+    }
+    else {
+        CCLOG("Save failed: %s", filePath.c_str());
+    }
+}
+
+bool GameManager::loadTowerData(const std::string& filename) {
+    if (!currentScene) {
+        CCLOG("GameManager: currentScene is null, cannot load tower data");
+        return false;
+    }
+
+    const int CELL_SIZE = 64;
+    const int X_SIZE = 15;
+    const int Y_SIZE = 9;
+
+    std::string writablePath = FileUtils::getInstance()->getWritablePath();
+    std::string path = writablePath + filename;
+    std::string fileContent = FileUtils::getInstance()->getStringFromFile(path);
+    
+    rapidjson::Document doc;
+    doc.Parse(fileContent.c_str());
+    
+    if (doc.HasParseError()) {
+        CCLOG("Error parsing JSON file: %s", filename.c_str());
+        return false;
+    }
+    
+    if (doc.HasMember("towers") && doc["towers"].IsArray()) {
+        const rapidjson::Value& towersArray = doc["towers"];
+        if (towersArray.IsArray()) {
+            for (rapidjson::SizeType i = 0; i < towersArray.Size(); ++i) {
+                const rapidjson::Value& row = towersArray[i];
+                if (row.IsArray()) {
+                    for (rapidjson::SizeType j = 0; j < row.Size(); ++j) {
+                        const rapidjson::Value& towerObj = row[j];
+                        if (towerObj.IsObject()) {
+                            int flag = towerObj["flag"].GetInt();
+                            int index = towerObj["index"].GetInt();
+                            int data = towerObj["data"].GetInt();
+                            
+                            if (flag == 1) {
+                                Vec2 pos = Vec2((i + 0.5f) * CELL_SIZE, (j + 0.5f) * CELL_SIZE);
+                                auto tower = TowerFactoryProvider::createTower(index, data);
+                                if (tower) {
+                                    tower->build(currentScene, pos);
+                                    currentScene->towers[currentScene->map_data[i][j].key] = tower;
+                                }
+                            }
+                            else if (flag == 2 && currentScene->map_data[i][j].flag == 3) {
+                                auto obb = new Obstacle(index);
+                                obb->Produce(currentScene, i, j);
+                                obb->setHealth(data);
+                                obb->updateHealthBar();
+                                currentScene->Obstacles[currentScene->map_data[i][j].key] = obb;
+                                if (obb->GetSize() == 2) {
+                                    currentScene->map_data[i + 1][j].flag = 2;
+                                    currentScene->Obstacles[currentScene->map_data[i + 1][j].key] = obb;
+                                }
+                                else if (obb->GetSize() == 4) {
+                                    currentScene->map_data[i][j + 1].flag = currentScene->map_data[i + 1][j].flag = currentScene->map_data[i + 1][j + 1].flag = 2;
+                                    currentScene->Obstacles[currentScene->map_data[i + 1][j].key] = currentScene->Obstacles[currentScene->map_data[i][j + 1].key] = currentScene->Obstacles[currentScene->map_data[i + 1][j + 1].key] = obb;
+                                }
+                            }
+                            currentScene->map_data[i][j].flag = flag;
+                        }
+                    }
+                }
+            }
+        }
+        else {
+            CCLOG("Towers data is not an array in level");
+            return false;
+        }
+    }
+    
+    if (doc.HasMember("money") && doc["money"].IsInt()) {
+        int savedMoney = doc["money"].GetInt();
+        SetMoney(savedMoney, false);
+        CCLOG("INIT_MONEY:currentIndex: %d", GetMoney());
+    }
+    else {
+        CCLOG("No money data in file: %s", filename.c_str());
+        return false;
+    }
+    
+    return true;
 }
