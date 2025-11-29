@@ -8,7 +8,7 @@
 #include<memory>
 #include"entities/Monster/Monster.h"
 #include"entities/Tower/Tower.h"
-#include"Obstacle.h"
+#include"entities/Obstacle/Obstacle.h"
 #include"core/state/GameState.h"
 #include"core/state/PausedState.h"
 #include"core/state/MenuState.h"

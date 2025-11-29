@@ -66,7 +66,8 @@ list(APPEND GAME_SOURCE
      Classes/entities/Monster/Monster.cpp
      Classes/config/MonsterConfigs.cpp
      Classes/audio/music.cpp
-     Classes/entities/Obstacle.cpp
+     Classes/entities/Obstacle/Obstacle.cpp
+     Classes/entities/Obstacle/ObstacleFactory.cpp
      Classes/scenes/seeScene.cpp
      Classes/scenes/setScene.cpp
      Classes/scenes/themeScene.cpp
@@ -97,7 +98,8 @@ list(APPEND GAME_HEADER
      Classes/config/MonsterConfigs.h
      Classes/audio/music.h
      Classes/config/obpos.h
-     Classes/entities/Obstacle.h
+     Classes/entities/Obstacle/Obstacle.h
+     Classes/entities/Obstacle/ObstacleFactory.h
      Classes/scenes/seeScene.h
      Classes/scenes/setScene.h
      Classes/scenes/themeScene.h

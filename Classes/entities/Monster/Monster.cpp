@@ -231,6 +231,8 @@ void  Monster::updateHealthBar() {
 void  Monster::getHurt(int value)
 {
     health-=value;
+	setHpVisible(true);
+	updateHealthBar();
 }
 void showBossSkill(const std::string& skillText);
 //BossYellow�ļ���:��������
