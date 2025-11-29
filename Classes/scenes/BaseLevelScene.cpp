@@ -612,6 +612,15 @@ bool BaseLevelScene::initWithLevel(int level)
     this->levelId = level;
     this->loadMap();
     manager = GameManager::getInstance(this);
+    
+    // ✅ 先注册监听器，确保怪物创建事件能被正确处理
+    registerOutcomeListeners();
+    registerMonsterListeners();
+    registerSpawnEffectListeners();
+    registerCarrotShakeListeners();
+    registerMonsterSpawnListeners();  // ✅ 必须在initLevel之前注册，否则读档时怪物无法添加到场景
+    
+    // 初始化关卡（包括创建怪物）
     manager->initLevel(level, !isNewGame[levelId - 1]);
     
     // 初始化技能控制器
@@ -660,12 +669,7 @@ bool BaseLevelScene::initWithLevel(int level)
     countDownController_->init(countDownCallbacks);
     
     initUI();
-    registerOutcomeListeners();
-    registerMonsterListeners();
-    registerSpawnEffectListeners();
-    registerCarrotShakeListeners();
-    registerMonsterSpawnListeners();
-    registerSpawnEffectListeners();
+    // ✅ 监听器已在initLevel之前注册（第617-621行），这里不再重复注册
     plantsLayer = Layer::create();
     this->addChild(plantsLayer, 10);
     addMouseListener();
