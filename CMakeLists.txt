@@ -66,6 +66,7 @@ list(APPEND GAME_SOURCE
      Classes/entities/Carrot/Carrot.cpp
      Classes/entities/Carrot/CarrotState.cpp
      Classes/core/GameManager.cpp
+     Classes/core/StorageService/StorageService.cpp
      Classes/scenes/menuScene.cpp
      Classes/entities/Monster/Monster.cpp
      Classes/config/MonsterConfigs.cpp
@@ -100,6 +101,7 @@ list(APPEND GAME_HEADER
      Classes/entities/Carrot/Carrot.h
      Classes/entities/Carrot/CarrotState.h
      Classes/core/GameManager.h
+     Classes/core/StorageService/StorageService.h
      Classes/scenes/menuScene.h
      Classes/entities/Monster/Monster.h
      Classes/config/MonsterConfigs.h

@@ -37,7 +37,7 @@
 #include "audio/include/AudioEngine.h"
 using namespace cocos2d::experimental;
 #endif
-//#define DEBUG_MODE 1
+#define DEBUG_MODE 1
 #ifdef _WIN32 
 #include <windows.h>
 #include <iostream>
@@ -129,7 +129,7 @@ bool AppDelegate::applicationDidFinishLaunching() {
     //��Ԥ����
     Music::getInstance()->preloadSoundEffect("Music/bgm.mp3");
     //����ģʽ
-#ifdef DEBUG_MODE
+#ifdef _WIN32
     createConsole();
 #endif 
 

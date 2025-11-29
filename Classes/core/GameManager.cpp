@@ -14,6 +14,7 @@
 #include "../gameplay/events/CarrotEvents.h"
 #include "../entities/Tower/TowerFactory.h"
 #include "../entities/Obstacle.h"
+#include "StorageService/StorageService.h"
 
 USING_NS_CC;
 extern int DeadCount;
@@ -114,7 +115,15 @@ void GameManager::initLevel(int level,bool initMode)
     ClearMonsters();
     AllMonsterNum=0;
     DeadCount=0;
-    SetMoney(kDefaultStartingMoney, false);
+    // 只有在非读档模式（新游戏）时才重置金钱，读档模式下金钱会从存档中恢复
+    CCLOG("GameManager::initLevel: level=%d, initMode=%s, current money=%d", 
+          level, initMode ? "true (load)" : "false (new)", GetMoney());
+    if (!initMode) {
+        CCLOG("GameManager::initLevel: Resetting money to default: %d", kDefaultStartingMoney);
+        SetMoney(kDefaultStartingMoney, false);
+    } else {
+        CCLOG("GameManager::initLevel: Load mode - keeping current money: %d (will be loaded from file)", GetMoney());
+    }
     hasGameWon = false;
     hasGameLost = false;
     initPath();
@@ -633,8 +642,11 @@ void GameManager::ChangeMoney(int delta) {
 
 // 设置金币并按需通知监听者，保持 HUD 等同步
 void GameManager::SetMoney(int value, bool publishEvent) {
+    int oldMoney = money;
     int delta = value - money;
     money = value;
+    CCLOG("GameManager::SetMoney: %d -> %d (delta: %d, publishEvent: %s)", 
+          oldMoney, money, delta, publishEvent ? "true" : "false");
     if (publishEvent) {
         PublishMoneyChangedEvent(delta);
     }
@@ -722,35 +734,7 @@ Vec2 GameManager::gridToScreenCenter(const Vec2& gridPoint) {
 
 // 存档/读档功能实现
 void GameManager::saveGameState() {
-    extern bool level_is_win[3];
-    
-    rapidjson::Document document;
-    document.SetObject();
-
-    rapidjson::Value GameState(rapidjson::kArrayType);
-
-    for (auto level : level_is_win) {
-        GameState.PushBack(rapidjson::Value(level), document.GetAllocator());
-    }
-
-    document.AddMember("levels", GameState, document.GetAllocator());
-
-    rapidjson::StringBuffer buffer;
-    rapidjson::Writer<rapidjson::StringBuffer> writer(buffer);
-    document.Accept(writer);
-
-    std::string writablePath = FileUtils::getInstance()->getWritablePath();
-    std::string filePath = writablePath + "level_state.json";
-
-    std::ofstream ofs(filePath);
-    if (ofs.is_open()) {
-        ofs << buffer.GetString();
-        ofs.close();
-        CCLOG("Save success: %s", filePath.c_str());
-    }
-    else {
-        CCLOG("Save failed: %s", filePath.c_str());
-    }
+    StorageService::getInstance()->saveGameState();
 }
 
 void GameManager::saveTowerData() {
@@ -758,149 +742,23 @@ void GameManager::saveTowerData() {
         CCLOG("GameManager: currentScene is null, cannot save tower data");
         return;
     }
-
-    const int CELL_SIZE = 64;
-    const int X_SIZE = 15;
-    const int Y_SIZE = 9;
-
-    rapidjson::Document document;
-    document.SetObject();
-    rapidjson::Value towerArray(rapidjson::kArrayType);
-    
-    for (int i = 0; i < X_SIZE; i++) {
-        rapidjson::Value rowArray(rapidjson::kArrayType);
-        for (int j = 0; j < Y_SIZE; j++) {
-            rapidjson::Value towerObj(rapidjson::kObjectType);
-            towerObj.AddMember("flag", currentScene->map_data[i][j].flag, document.GetAllocator());
-            if (currentScene->map_data[i][j].flag == 1) {
-                auto it = currentScene->towers.find(currentScene->map_data[i][j].key);
-                if (it != currentScene->towers.end()) {
-                    towerObj.AddMember("index", it->second->GetIndex(), document.GetAllocator());
-                    towerObj.AddMember("data", it->second->GetGrade(), document.GetAllocator());
-                } else {
-                    towerObj.AddMember("index", 0, document.GetAllocator());
-                    towerObj.AddMember("data", 0, document.GetAllocator());
-                }
-            }
-            else if (currentScene->map_data[i][j].flag == 2) {
-                auto it = currentScene->Obstacles.find(currentScene->map_data[i][j].key);
-                if (it != currentScene->Obstacles.end()) {
-                    towerObj.AddMember("index", it->second->GetIndex(), document.GetAllocator());
-                    towerObj.AddMember("data", it->second->getHealth(), document.GetAllocator());
-                } else {
-                    towerObj.AddMember("index", 0, document.GetAllocator());
-                    towerObj.AddMember("data", 0, document.GetAllocator());
-                }
-            }
-            else {
-                towerObj.AddMember("index", 0, document.GetAllocator());
-                towerObj.AddMember("data", 0, document.GetAllocator());
-            }
-            rowArray.PushBack(towerObj, document.GetAllocator());
-        }
-        towerArray.PushBack(rowArray, document.GetAllocator());
-    }
-    
-    document.AddMember("towers", towerArray, document.GetAllocator());
-    document.AddMember("money", GetMoney(), document.GetAllocator());
-    
-    rapidjson::StringBuffer buffer;
-    rapidjson::Writer<rapidjson::StringBuffer> writer(buffer);
-    document.Accept(writer);
-
-    std::string writablePath = FileUtils::getInstance()->getWritablePath();
-    std::string filePath = writablePath + "level" + std::to_string(levelId) + "_tower.json";
-
-    std::ofstream ofs(filePath);
-    if (ofs.is_open()) {
-        ofs << buffer.GetString();
-        ofs.close();
-        CCLOG("Save success: %s", filePath.c_str());
-    }
-    else {
-        CCLOG("Save failed: %s", filePath.c_str());
-    }
+    StorageService::getInstance()->saveTowerData(currentScene, levelId, GetMoney());
 }
 
 bool GameManager::loadTowerData(const std::string& filename) {
     if (!currentScene) {
-        CCLOG("GameManager: currentScene is null, cannot load tower data");
+        CCLOG("GameManager::loadTowerData: ERROR - currentScene is null, cannot load tower data");
         return false;
     }
-
-    const int CELL_SIZE = 64;
-    const int X_SIZE = 15;
-    const int Y_SIZE = 9;
-
-    std::string writablePath = FileUtils::getInstance()->getWritablePath();
-    std::string path = writablePath + filename;
-    std::string fileContent = FileUtils::getInstance()->getStringFromFile(path);
-    
-    rapidjson::Document doc;
-    doc.Parse(fileContent.c_str());
-    
-    if (doc.HasParseError()) {
-        CCLOG("Error parsing JSON file: %s", filename.c_str());
-        return false;
-    }
-    
-    if (doc.HasMember("towers") && doc["towers"].IsArray()) {
-        const rapidjson::Value& towersArray = doc["towers"];
-        if (towersArray.IsArray()) {
-            for (rapidjson::SizeType i = 0; i < towersArray.Size(); ++i) {
-                const rapidjson::Value& row = towersArray[i];
-                if (row.IsArray()) {
-                    for (rapidjson::SizeType j = 0; j < row.Size(); ++j) {
-                        const rapidjson::Value& towerObj = row[j];
-                        if (towerObj.IsObject()) {
-                            int flag = towerObj["flag"].GetInt();
-                            int index = towerObj["index"].GetInt();
-                            int data = towerObj["data"].GetInt();
-                            
-                            if (flag == 1) {
-                                Vec2 pos = Vec2((i + 0.5f) * CELL_SIZE, (j + 0.5f) * CELL_SIZE);
-                                auto tower = TowerFactoryProvider::createTower(index, data);
-                                if (tower) {
-                                    tower->build(currentScene, pos);
-                                    currentScene->towers[currentScene->map_data[i][j].key] = tower;
-                                }
-                            }
-                            else if (flag == 2 && currentScene->map_data[i][j].flag == 3) {
-                                auto obb = new Obstacle(index);
-                                obb->Produce(currentScene, i, j);
-                                obb->setHealth(data);
-                                obb->updateHealthBar();
-                                currentScene->Obstacles[currentScene->map_data[i][j].key] = obb;
-                                if (obb->GetSize() == 2) {
-                                    currentScene->map_data[i + 1][j].flag = 2;
-                                    currentScene->Obstacles[currentScene->map_data[i + 1][j].key] = obb;
-                                }
-                                else if (obb->GetSize() == 4) {
-                                    currentScene->map_data[i][j + 1].flag = currentScene->map_data[i + 1][j].flag = currentScene->map_data[i + 1][j + 1].flag = 2;
-                                    currentScene->Obstacles[currentScene->map_data[i + 1][j].key] = currentScene->Obstacles[currentScene->map_data[i][j + 1].key] = currentScene->Obstacles[currentScene->map_data[i + 1][j + 1].key] = obb;
-                                }
-                            }
-                            currentScene->map_data[i][j].flag = flag;
-                        }
-                    }
-                }
-            }
-        }
-        else {
-            CCLOG("Towers data is not an array in level");
-            return false;
-        }
-    }
-    
-    if (doc.HasMember("money") && doc["money"].IsInt()) {
-        int savedMoney = doc["money"].GetInt();
-        SetMoney(savedMoney, false);
-        CCLOG("INIT_MONEY:currentIndex: %d", GetMoney());
-    }
-    else {
-        CCLOG("No money data in file: %s", filename.c_str());
-        return false;
-    }
-    
-    return true;
+    CCLOG("GameManager::loadTowerData: Loading file %s, current money: %d", filename.c_str(), GetMoney());
+    bool result = StorageService::getInstance()->loadTowerData(currentScene, filename, 
+        [this](int money) { 
+            CCLOG("GameManager::loadTowerData callback: Setting money to %d", money);
+            // 发布事件以更新 UI（MoneyHud 监听此事件）
+            SetMoney(money, true); 
+            CCLOG("GameManager::loadTowerData callback: Money after SetMoney: %d", GetMoney());
+        });
+    CCLOG("GameManager::loadTowerData: Load result: %s, final money: %d", 
+          result ? "success" : "failed", GetMoney());
+    return result;
 }
