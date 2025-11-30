@@ -9,12 +9,14 @@
 USING_NS_CC;
 
 // 塔的总数量
-#define TOWER_NUM 4
+#define TOWER_NUM 6
 
 // 前向声明
 class BaseLevelScene;
 class Tower;
 class Obstacle;
+class Fan;
+class MagicTower;
 
 // 塔基类 - 所有防御塔的父类
 class Tower {
@@ -129,4 +131,37 @@ public:
     
     Shit(int index_, int grade) :Tower(index_, grade) {}
     static std::string shit_shell[3];  // 粪便图片资源表
+};
+
+// 风扇塔类 - 继承自Tower，发射旋转的四叶草攻击
+class Fan :public Tower {
+public:
+    Sprite* curr_clover;   // 当前四叶草精灵
+    float de_time;         // 四叶草飞行时间
+    
+    Fan(int index_, int grade) :Tower(index_, grade) {}
+    static std::string clover[3];  // 四叶草图片资源表
+};
+
+// 魔法塔类 - 继承自Tower，发射持续光束攻击
+class MagicTower :public Tower {
+public:
+    Sprite* curr_beam;     // 当前光束精灵
+    Monster* lockedTarget; // 锁定的目标怪物
+    float beamDamageInterval; // 光束伤害间隔
+    float lastDamageTime;  // 上次造成伤害的时间
+    
+    MagicTower(int index_, int grade) :Tower(index_, grade), curr_beam(nullptr), lockedTarget(nullptr), beamDamageInterval(0.5f), lastDamageTime(0.0f) {}
+    
+    // 析构函数，清理光束资源
+    virtual ~MagicTower() {clearBeam();}
+    // 添加清理方法
+    void clearBeam() {
+        if (curr_beam) {
+            curr_beam->removeFromParent();
+            curr_beam = nullptr;
+        }
+        lockedTarget = nullptr;
+    }
+    static std::string magic_beam[3];  // 光束图片资源表
 };

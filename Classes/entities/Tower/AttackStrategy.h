@@ -19,6 +19,8 @@ class Bottle;
 class Sun;
 class MyPlane;
 class Shit;
+class Fan;
+class MagicTower;
 class BaseLevelScene;
 
 // 辅助函数声明
@@ -110,4 +112,52 @@ private:
     // 模板函数，处理粪便对目标的伤害
     template<class T>
     void ShellDemage(Shit* shit, BaseLevelScene* my_scene, T* sp);
+};
+
+// 风扇攻击策略 - 具体策略类，实现风扇塔的攻击行为
+class FanAttackStrategy : public AttackStrategy {
+private:
+    static const float speed;  // 四叶草飞行速度
+    
+public:
+    // 实现基类的纯虚函数，定义风扇塔的攻击逻辑
+    void attack(Tower* tower, BaseLevelScene* scene, std::vector<Monster*>& monsters, 
+                char isTarget, Monster* tar_m, Obstacle* tar_o, float jiasu) override;
+    
+private:
+    // 模板函数，处理风扇塔对目标的攻击
+    template<class T>
+    bool AttackSprite(Fan* fan, T* sp, BaseLevelScene* my_scene, float jiasu, std::vector<Monster*>& monsters);
+    
+    // 创建四叶草精灵
+    void CloverProduct(Fan* fan, Scene* my_scene);
+    
+    // 处理四叶草对目标的伤害
+    template<class T>
+    void CloverDemage(Fan* fan, BaseLevelScene* my_scene, T* sp);
+};
+
+// 魔法攻击策略 - 具体策略类，实现魔法塔的攻击行为
+class MagicAttackStrategy : public AttackStrategy {
+public:
+    // 实现基类的纯虚函数，定义魔法塔的攻击逻辑
+    void attack(Tower* tower, BaseLevelScene* scene, std::vector<Monster*>& monsters, 
+                char isTarget, Monster* tar_m, Obstacle* tar_o, float jiasu) override;
+    
+private:
+    // 魔法塔的攻击实现，持续光束攻击（模板化，支持 Monster 和 Obstacle）
+    template<class T>
+    void MagicBeamAttack(MagicTower* magic, BaseLevelScene* my_scene, std::vector<Monster*>& monsters, T* sp, float jiasu);
+
+    // 创建魔法光束（模板化目标类型）
+    template<class T>
+    void CreateMagicBeam(MagicTower* magic, BaseLevelScene* my_scene, T* target);
+
+    // 更新光束位置和方向（模板化目标类型）
+    template<class T>
+    void UpdateBeamPosition(MagicTower* magic, T* target);
+
+    // 处理光束对目标的持续伤害（模板化目标类型）
+    template<class T>
+    void ProcessBeamDamage(MagicTower* magic, BaseLevelScene* my_scene, T* target, float currentTime);
 };

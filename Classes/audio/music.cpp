@@ -28,6 +28,8 @@ const std::string AudioConfig::OBJECT = "Music/Object.mp3";
 const std::string AudioConfig::SHIT = "Music/Shit.mp3";
 const std::string AudioConfig::GAME_OVER = "Music/gameover.mp3";
 const std::string AudioConfig::KAI = "Music/kai.mp3";
+const std::string AudioConfig::FAN = "Music/fan.mp3";
+const std::string AudioConfig::MAGIC = "Music/magic.mp3";
 
 int BackgroundMusicStrategy::play(const std::string& filePath, bool loop, float volume) {
     return AudioEngine::play2d(filePath, loop, volume);
@@ -272,6 +274,20 @@ void Music::ShitSound() {
     if (musicEnabled) {
         int audioId = soundEffectStrategy->play(AudioConfig::SHIT, false, 1.0f);
         audioIds[AudioConfig::SHIT] = audioId;
+    }
+}
+
+void Music::fanSound() {
+    if (musicEnabled) {
+        int audioId = soundEffectStrategy->play(AudioConfig::FAN, false, 1.0f);
+        audioIds[AudioConfig::FAN] = audioId;
+    }
+}
+
+void Music::magicSound() {
+    if (musicEnabled) {
+        int audioId = soundEffectStrategy->play(AudioConfig::MAGIC, false, 1.0f);
+        audioIds[AudioConfig::MAGIC] = audioId;
     }
 }
 

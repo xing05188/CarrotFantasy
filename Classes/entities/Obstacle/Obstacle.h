@@ -40,6 +40,7 @@ public:
 	static ObData Ob[10];
 	int GetIndex(){return index;}
 	Obstacle(int index) :index(index),size(Ob[index].size),maxHp(Ob[index].hp), reward(Ob[index].money), health(Ob[index].hp), shield(0), maxShield(0) {}
+	virtual ~Obstacle() {} // 添加虚析构函数，使类成为多态类型
 	void Produce(BaseLevelScene* my_scene, int x_, int y_);//生成障碍物
 
 	Vec2 getPosition() { return curr->getPosition(); }

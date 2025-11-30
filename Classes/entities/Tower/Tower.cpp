@@ -5,15 +5,17 @@
 
 // 塔的图片资源表 - 每种塔有3个等级的图片
 std::string Tower::tower_table[TOWER_NUM][3] = { 
-    {"Towers/huo0.png","Towers/huo1.png","Towers/huo2.png"},    // 火焰塔
-    {"Towers/sun0.png","Towers/sun1.png","Towers/sun2.png"},    // 太阳塔
-    {"Towers/plane0.png","Towers/plane1.png","Towers/plane2.png"}, // 飞机塔
-    {"Towers/shit0.png","Towers/shit1.png","Towers/shit2.png"}    // 粪便塔
+    {"Towers/THuo/huo0.png","Towers/THuo/huo1.png","Towers/THuo/huo2.png"},    // 火焰塔
+    {"Towers/TSun/sun0.png","Towers/TSun/sun1.png","Towers/TSun/sun2.png"},    // 太阳塔
+    {"Towers/TPlane/plane0.png","Towers/TPlane/plane1.png","Towers/TPlane/plane2.png"}, // 飞机塔
+    {"Towers/TShit/shit0.png","Towers/TShit/shit1.png","Towers/TShit/shit2.png"},    // 粪便塔
+    {"Towers/TFan/windmill0.png","Towers/TFan/windmill1.png","Towers/TFan/windmill2.png"},      // 风扇塔
+    {"Towers/TMagic/magic0.png","Towers/TMagic/magic1.png","Towers/TMagic/magic2.png"}      // 魔法塔
 };
 
 // 塔基图片资源表
 std::string Tower::base_table[TOWER_NUM] = { 
-    "Towers/huobase.png", "Towers/sunbase.png", "Towers/planebase.png", "Towers/shitbase.png" 
+    "Towers/THuo/huobase.png", "Towers/TSun/sunbase.png", "Towers/TPlane/planebase.png", "Towers/TShit/shitbase.png", "Towers/TFan/windmillbase.png", "Towers/TMagic/magicbase.png" 
 };
 
 // 锚点表 - 第一个为基座锚点，第二个为塔身锚点
@@ -21,20 +23,22 @@ Vec2 Tower::anchorpoint_table[TOWER_NUM][2] = {
     {Vec2(0.5,0.5),Vec2(0.4,0.46)},  // 火焰塔
     {Vec2(0.5,0.5),Vec2(0.5,0.5)},  // 太阳塔
     {Vec2(0.5,0.5),Vec2(0.5,0.5)},  // 飞机塔
-    {Vec2(0.5,1.0),Vec2(0.5,0.5)}   // 粪便塔
+    {Vec2(0.5,1.0),Vec2(0.5,0.5)},  // 粪便塔
+    {Vec2(0.5,0.8),Vec2(0.5,0.3)},  // 风扇塔
+    {Vec2(0.5,1.0),Vec2(0.5,0.4)}   // 魔法塔
 };
 
 // 建造成本表
-int Tower::build_cost[TOWER_NUM] = { 100,180 ,220,120 };
+int Tower::build_cost[TOWER_NUM] = { 100,180 ,220,120,160,160 };
 // 攻击力表 - 每种塔3个等级的攻击力
-int Tower::demage_table[TOWER_NUM][3] = { {20,35,50},{30,45,60},{50,80,110},{5,10,20} };
+int Tower::demage_table[TOWER_NUM][3] = { {20,35,50},{30,45,60},{50,80,110},{5,10,20},{25,45,65},{12,18,25} };
 // 攻击范围表 - 每种塔3个等级的攻击范围
-int Tower::range_table[TOWER_NUM][3] = { {200,250,300},{200,250,350},{250,375,400},{200,250,300} };
+int Tower::range_table[TOWER_NUM][3] = { {200,250,300},{200,250,350},{250,375,400},{200,250,300},{220,280,340},{180,240,310} };
 
 // 升级成本表 - 每种塔有2次升级机会
-int Tower::up_cost[TOWER_NUM][2] = { {180,260},{260,320},{320,380},{220,260} };
+int Tower::up_cost[TOWER_NUM][2] = { {180,260},{260,320},{320,380},{220,260},{260,320},{180,260} };
 // 出售价格表 - 每种塔3个等级的出售价格
-int Tower::sell_money[TOWER_NUM][3] = { {80,224,432},{144,352,608},{176,432,736},{96,272,480} };
+int Tower::sell_money[TOWER_NUM][3] = { {80,224,432},{144,352,608},{176,432,736},{96,272,480},{144,352,608},{80,224,432} };
 
 // 出售按钮图片映射表
 std::map<int, std::string> Tower::sale_graph = { 
@@ -66,12 +70,14 @@ Sprite* Tower::curr_up;
 Sprite* Tower::curr_range;
 
 // 攻击间隔表 - 每种塔的攻击间隔
-float Tower::interval_table[TOWER_NUM] = { 0.8,1.5,2.5,1.0 };
+float Tower::interval_table[TOWER_NUM] = { 0.8,1.5,2.5,1.0,1.6,0.1 };
 
 // 子类资源表
-std::string Bottle::bottle_shell[3] = { "Towers/shell1-1.png","Towers/shell1-2.png" ,"Towers/shell1-3.png" }; // 瓶子塔炮弹
-std::string MyPlane::ray[3] = { "Towers/ray0.png","Towers/ray1.png","Towers/ray2.png" }; // 飞机塔光线
-std::string Shit::shit_shell[3] = { "Towers/shitshell1.png","Towers/shitshell2.png","Towers/shitshell3.png" }; // 粪便塔炮弹
+std::string Bottle::bottle_shell[3] = { "Towers/THuo/shell1-1.png","Towers/THuo/shell1-2.png" ,"Towers/THuo/shell1-3.png" }; // 瓶子塔炮弹
+std::string MyPlane::ray[3] = { "Towers/TPlane/ray0.png","Towers/TPlane/ray1.png","Towers/TPlane/ray2.png" }; // 飞机塔光线
+std::string Shit::shit_shell[3] = { "Towers/TShit/shitshell1.png","Towers/TShit/shitshell2.png","Towers/TShit/shitshell3.png" }; // 粪便塔炮弹
+std::string Fan::clover[3] = { "Towers/TFan/windmill0.png","Towers/TFan/windmill1.png","Towers/TFan/windmill2.png" }; // 风扇塔四叶草
+std::string MagicTower::magic_beam[3] = { "Towers/TMagic/magicbeam.png","Towers/TMagic/magicbeam.png","Towers/TMagic/magicbeam.png" }; // 魔法塔光束
 
 // 建造塔的方法 - 在指定位置创建塔的基座和塔身
 void Tower::build(BaseLevelScene* my_scene, Vec2 position)

@@ -103,6 +103,8 @@ public:
     void ShitSound();
     void gameOverSound();
     void kaiSound();
+    void fanSound();
+    void magicSound();
 
     int is_play();
     void set_music(int option);
@@ -137,5 +139,7 @@ public:
     static const std::string SHIT;
     static const std::string GAME_OVER;
     static const std::string KAI;
+    static const std::string FAN;
+    static const std::string MAGIC;
 };
 #endif // __music_H__

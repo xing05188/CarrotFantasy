@@ -47,6 +47,20 @@ public:
     Tower* createTower(int grade = 0) override;
 };
 
+// 风扇塔工厂类 - 创建风扇塔的具体工厂
+class FanFactory : public TowerFactory {
+public:
+    // 重写创建塔的方法，返回风扇塔实例
+    Tower* createTower(int grade = 0) override;
+};
+
+// 魔法塔工厂类 - 创建魔法塔的具体工厂
+class MagicFactory : public TowerFactory {
+public:
+    // 重写创建塔的方法，返回魔法塔实例
+    Tower* createTower(int grade = 0) override;
+};
+
 // 工厂提供者类 - 用于管理所有工厂实例，提供统一的创建接口
 class TowerFactoryProvider {
 public:
