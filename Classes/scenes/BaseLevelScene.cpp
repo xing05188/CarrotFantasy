@@ -683,14 +683,18 @@ bool BaseLevelScene::initWithLevel(int level)
     addMouseListener();
 
     cell_flag = 1;
-    buy_tower[0].push_back("Towers/affordhuo.png"); buy_tower[1].push_back("Towers/unaffordhuo.png");
-    buy_tower[0].push_back("Towers/affordsun.png"); buy_tower[1].push_back("Towers/unaffordsun.png");
-    buy_tower[0].push_back("Towers/affordplane.png"); buy_tower[1].push_back("Towers/unaffordplane.png");
-    buy_tower[0].push_back("Towers/affordshit.png"); buy_tower[1].push_back("Towers/unaffordshit.png");
+    buy_tower[0].push_back("Towers/THuo/affordhuo.png"); buy_tower[1].push_back("Towers/THuo/unaffordhuo.png");
+    buy_tower[0].push_back("Towers/TSun/affordsun.png"); buy_tower[1].push_back("Towers/TSun/unaffordsun.png");
+    buy_tower[0].push_back("Towers/TPlane/affordplane.png"); buy_tower[1].push_back("Towers/TPlane/unaffordplane.png");
+    buy_tower[0].push_back("Towers/TShit/affordshit.png"); buy_tower[1].push_back("Towers/TShit/unaffordshit.png");
+    buy_tower[0].push_back("Towers/TFan/affordwindmill.png"); buy_tower[1].push_back("Towers/TFan/unaffordwindmill.png");
+    buy_tower[0].push_back("Towers/TMagic/affordmagic.png"); buy_tower[1].push_back("Towers/TMagic/unaffordmagic.png");
     index_table.push_back(0);
     index_table.push_back(1);
     index_table.push_back(2);
     index_table.push_back(3);
+    index_table.push_back(4);
+    index_table.push_back(5);
     InitMapData();
     ObstacleFactoryProvider::initFactories();
     if (!isNewGame[levelId - 1])

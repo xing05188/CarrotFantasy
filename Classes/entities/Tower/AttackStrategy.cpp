@@ -5,6 +5,7 @@
 // 静态常量定义 - 定义各种攻击策略的速度
 const float BottleAttackStrategy::speed = 800; // 瓶子塔炮弹飞行速度
 const float ShitAttackStrategy::speed = 500;   // 粪便塔炮弹飞行速度
+const float FanAttackStrategy::speed = 400;    // 风扇塔四叶草飞行速度
 
 // Bottle攻击策略实现
 void BottleAttackStrategy::attack(Tower *tower, BaseLevelScene *scene,
@@ -709,6 +710,186 @@ void ShitAttackStrategy::ShellDemage(Shit *shit, BaseLevelScene *my_scene, Monst
     }
 }
 
+// Fan攻击策略实现
+void FanAttackStrategy::attack(Tower *tower, BaseLevelScene *scene,
+                              std::vector<Monster *> &monsters, char isTarget,
+                              Monster *tar_m, Obstacle *tar_o, float jiasu)
+{
+    // 类型转换，确保传入的是Fan类型的塔
+    Fan *fan = dynamic_cast<Fan *>(tower);
+    if (!fan)
+        return;
+
+    // 重置攻击间隔
+    fan->interval = 0;
+
+    // 优先攻击指定目标
+    if (isTarget == 1)
+    { // 指定怪物目标
+        if (AttackSprite(fan, tar_m, scene, jiasu, monsters))
+            return;
+    }
+    if (isTarget == 2)
+    { // 指定障碍物目标
+        if (AttackSprite(fan, tar_o, scene, jiasu, monsters))
+            return;
+    }
+
+    // 遍历所有怪物，寻找攻击范围内的目标
+    for (auto it = monsters.begin(); it != monsters.end(); it++)
+    {
+        if ((*it)->getHealth() <= 0)
+            continue; // 跳过已死亡的怪物
+        if (AttackSprite(fan, (*it), scene, jiasu, monsters))
+            break; // 找到目标并攻击后退出循环
+    }
+}
+
+// 风扇塔攻击精灵的模板函数 - 支持攻击怪物和障碍物
+template <class T>
+bool FanAttackStrategy::AttackSprite(Fan *fan, T *sp, BaseLevelScene *my_scene, float jiasu,std::vector<Monster *> &monsters)
+{
+    Vec2 m_pos = sp->getPosition();
+    double distance = sqrt((m_pos.x - fan->pos.x) * (m_pos.x - fan->pos.x) +
+                           (m_pos.y - fan->pos.y) * (m_pos.y - fan->pos.y));
+
+    if (distance < fan->GetRange() / 2)
+    {
+        auto callback2 = CallFunc::create([fan, m_pos, my_scene, jiasu, monsters, this]() {
+            CloverProduct(fan, my_scene);
+
+            Vec2 direction = m_pos - fan->pos;
+            direction.normalize();
+            
+            float maxDistance = 1000.0f;
+            float flightTime = maxDistance / (speed * jiasu);
+            
+            auto moveAction = MoveBy::create(flightTime, direction * maxDistance);
+            auto rotateAction = RotateBy::create(flightTime, 360.0f * flightTime);
+            auto spawnAction = Spawn::create(moveAction, rotateAction, nullptr);
+            
+            // 飞行结束后自动移除
+            auto removeAction = CallFunc::create([fan]() {
+                if (fan->curr_clover) {
+                    fan->curr_clover->removeFromParent();
+                    fan->curr_clover = nullptr;
+                }
+            });
+            
+            auto sequence = Sequence::create(spawnAction, removeAction, nullptr);
+            fan->curr_clover->runAction(sequence);
+            
+            // 修改：创建持续检测的回调函数
+            auto checkCollision = CallFunc::create([fan, my_scene, monsters, this]() {
+                if (!fan->curr_clover) return;
+                
+                // 检测与所有怪物的碰撞
+                for (auto monster : monsters) {
+                    if (monster->getHealth() > 0) {
+                        float distance = (monster->getPosition() - fan->curr_clover->getPosition()).length();
+                        if (distance < 40.f) { // 碰撞阈值
+                            CloverDemage(fan, my_scene, monster);
+                        }
+                    }
+                }
+                
+                // 检测与所有障碍物的碰撞
+                for (auto obstacle : my_scene->Obstacles) {
+                    if (obstacle.second->getHealth() > 0) {
+                        float distance = (obstacle.second->getPosition() - fan->curr_clover->getPosition()).length();
+                        if (distance < 40.f) {
+                            CloverDemage(fan, my_scene, obstacle.second);
+                        }
+                    }
+                }
+            });
+            
+            // 修改：创建重复检测的动作序列
+            auto collisionSequence = Sequence::create(
+                checkCollision,
+                DelayTime::create(0.1f), // 每0.1秒检测一次
+                nullptr
+            );
+            auto repeatCollision = Repeat::create(collisionSequence, static_cast<int>(flightTime / 0.1f));
+            fan->curr_clover->runAction(repeatCollision);
+        });
+
+        callback2->execute();
+        return true;
+    }
+    return false;
+}
+
+// 创建风扇塔的四叶草
+void FanAttackStrategy::CloverProduct(Fan *fan, Scene *my_scene)
+{
+    // 根据塔的等级创建对应的四叶草
+    auto clover = Sprite::create(fan->clover[fan->GetGrade()]);
+    Vec2 start_pos;
+    start_pos.x = fan->pos.x;
+    start_pos.y = fan->pos.y;
+    clover->setPosition(start_pos);
+    clover->setScale(0.8); // 设置四叶草缩放比例
+    my_scene->addChild(clover);
+    fan->curr_clover = clover;          // 保存当前四叶草引用
+    Music::getInstance()->fanSound(); // 播放攻击音效
+}
+
+// 风扇塔四叶草造成伤害的模板函数 - 支持对怪物和障碍物造成伤害
+template <class T>
+void FanAttackStrategy::CloverDemage(Fan *fan, BaseLevelScene *my_scene, T *sp)
+{
+    // 对目标造成伤害
+    DemageSprite(sp, fan->GetDemage());
+    
+    // 创建击中特效精灵
+    auto c = cocos2d::Sprite::create();
+    if (!c)
+    {
+        CCLOG("Failed to create c sprite.");
+        return;
+    }
+    my_scene->addChild(c);
+    c->setPosition(sp->getPosition());
+    c->setScale(1.2f);
+
+    // 加载击中特效动画帧
+    cocos2d::Vector<cocos2d::SpriteFrame *> frames;
+    for (int i = 7; i <= 8; ++i)
+    {
+        std::string frameName = "Towers/texiao_" + std::to_string(i) + ".png";
+        auto frame = cocos2d::SpriteFrame::create(frameName, cocos2d::Rect(0, 0, 44, 45));
+        if (frame)
+        {
+            frames.pushBack(frame);
+        }
+    }
+
+    // 检查是否成功加载动画帧
+    if (frames.empty())
+    {
+        CCLOG("No frames found for hit animation, skipping.");
+        return;
+    }
+
+    // 创建并播放击中动画
+    auto animation = cocos2d::Animation::createWithSpriteFrames(frames, 0.2f);
+    auto animate = cocos2d::Animate::create(animation);
+    auto onHitComplete = cocos2d::CallFunc::create([c]()
+                                                     {
+                                                         c->removeFromParent(); // 动画完成后移除特效精灵
+                                                     });
+
+    c->runAction(cocos2d::Sequence::create(animate, onHitComplete, nullptr));
+    
+    // 检查目标是否死亡
+    if (sp->getHealth() <= 0)
+    {
+        (sp)->toDie(my_scene);
+    }
+}
+
+
 // 碰撞检测函数 - 检测两个精灵是否相交
 bool isColliding(Sprite *spriteA, Sprite *spriteB)
 {
@@ -720,4 +901,258 @@ template <class T>
 void DemageSprite(T *sp, int demage)
 {
     sp->getHurt(demage); // 调用目标的受伤方法
+}
+
+// MagicAttackStrategy实现
+void MagicAttackStrategy::attack(Tower *tower, BaseLevelScene *scene,
+                                std::vector<Monster *> &monsters, char isTarget,
+                                Monster *tar_m, Obstacle *tar_o, float jiasu)
+{
+    // 类型转换，确保传入的是MagicTower类型的塔
+    MagicTower *magic = dynamic_cast<MagicTower *>(tower);
+    if (!magic)
+        return;
+
+    // 重置攻击间隔
+    magic->interval = 0;
+
+    // 优先攻击指定目标
+    if (isTarget == 1 && tar_m)
+    {
+        // 检查目标是否在攻击范围内
+        Vec2 m_pos = tar_m->getPosition();
+        float distance = sqrt((m_pos.x - magic->pos.x) * (m_pos.x - magic->pos.x) +
+                              (m_pos.y - magic->pos.y) * (m_pos.y - magic->pos.y));
+        if (distance < magic->GetRange() / 2 && tar_m->getHealth() > 0)
+        {
+            MagicBeamAttack(magic, scene, monsters, tar_m, jiasu);
+            return;
+        }
+    }
+
+    // 优先攻击指定障碍物目标（支持魔法塔对障碍物的攻击）
+    if (isTarget == 2 && tar_o)
+    {
+        Vec2 o_pos = tar_o->getPosition();
+        float distance = sqrt((o_pos.x - magic->pos.x) * (o_pos.x - magic->pos.x) +
+                              (o_pos.y - magic->pos.y) * (o_pos.y - magic->pos.y));
+        if (distance < magic->GetRange() / 2 && tar_o->getHealth() > 0)
+        {
+            MagicBeamAttack(magic, scene, monsters, tar_o, jiasu);
+            return;
+        }
+    }
+
+    // 如果已经锁定目标，检查目标是否仍在范围内且存活
+    if (magic->lockedTarget)
+    {
+        Vec2 m_pos = magic->lockedTarget->getPosition();
+        float distance = sqrt((m_pos.x - magic->pos.x) * (m_pos.x - magic->pos.x) +
+                              (m_pos.y - magic->pos.y) * (m_pos.y - magic->pos.y));
+        
+                              // 如果目标是障碍物且 isTarget 不是 2（表示取消了障碍物追踪），清除锁定
+        Obstacle* lockedObstacle = dynamic_cast<Obstacle*>(magic->lockedTarget);
+        if (lockedObstacle && isTarget != 2) {
+            magic->clearBeam();
+        }
+        // 如果目标死亡或离开范围，清除锁定
+        else if (magic->lockedTarget->getHealth() <= 0 || distance >= magic->GetRange() / 2)
+        {
+            magic->lockedTarget = nullptr;
+            if (magic->curr_beam)
+            {
+                magic->curr_beam->removeFromParent();
+                magic->curr_beam = nullptr;
+            }
+        }
+        // 否则继续攻击当前目标（传入锁定的怪物指针）
+        else
+        {
+            MagicBeamAttack(magic, scene, monsters, magic->lockedTarget, jiasu);
+            return;
+        }
+    }
+
+    // 寻找新的目标，优先攻击最先进入射程的怪物
+    for (auto it = monsters.begin(); it != monsters.end(); it++)
+    {
+        if ((*it)->getHealth() <= 0)
+            continue; // 跳过已死亡的怪物
+            
+        Vec2 m_pos = (*it)->getPosition();
+        float distance = sqrt((m_pos.x - magic->pos.x) * (m_pos.x - magic->pos.x) +
+                              (m_pos.y - magic->pos.y) * (m_pos.y - magic->pos.y));
+        
+        // 找到范围内的目标
+        if (distance < magic->GetRange() / 2)
+        {
+            magic->lockedTarget = (*it); // 锁定目标
+            MagicBeamAttack(magic, scene, monsters, magic->lockedTarget, jiasu);
+            return; // 找到目标后退出
+        }
+    }
+
+    if (isTarget == 0) {
+        magic->clearBeam();
+        return;
+    }
+}
+
+// 魔法塔执行光束攻击
+template <class T>
+void MagicAttackStrategy::MagicBeamAttack(MagicTower *magic, BaseLevelScene *my_scene, 
+                                         std::vector<Monster *> &monsters, T *sp, float jiasu)
+{
+    // 检查魔法塔和目标是否存在
+    if (!magic || !sp)
+        return;
+
+    // 如果目标是怪物，则记录为锁定目标；否则保持 lockedTarget 为 nullptr
+    Monster *maybeMonster = dynamic_cast<Monster *>(sp);
+    if (maybeMonster)
+    {
+        magic->lockedTarget = maybeMonster;
+    }
+
+    // 如果没有光束，创建新光束（基于传入目标）
+    if (!magic->curr_beam)
+    {
+        CreateMagicBeam(magic, my_scene, sp);
+    }
+    else
+    {
+        // 更新光束位置和方向（使用传入目标）
+        UpdateBeamPosition(magic, sp);
+    }
+
+    // 处理持续伤害（针对传入目标）
+    float currentTime = Director::getInstance()->getTotalFrames() / 60.0f; // 假设60FPS
+    ProcessBeamDamage(magic, my_scene, sp, currentTime);
+}
+
+// 创建魔法光束
+template <class T>
+void MagicAttackStrategy::CreateMagicBeam(MagicTower *magic, BaseLevelScene *my_scene, T *target)
+{
+    if (!magic || !target)
+        return;
+
+    // 根据塔的等级创建对应的光束
+    magic->curr_beam = Sprite::create(magic->magic_beam[magic->GetGrade()]);
+    magic->curr_beam->setAnchorPoint(Vec2(0.5, 0)); // 设置锚点为底部中心
+    magic->curr_beam->setColor(Color3B(128, 0, 255)); // 设置为紫色
+
+    // 计算光束的初始位置和方向
+    Vec2 targetPos = target->getPosition();
+    Vec2 direction = targetPos - magic->pos;
+    float distance = direction.length();
+    float angle = 90.0f-CC_RADIANS_TO_DEGREES(direction.getAngle());
+
+    // 设置光束位置和旋转
+    magic->curr_beam->setPosition(magic->pos);
+    magic->curr_beam->setRotation(angle);
+
+    // 设置光束长度，使其刚好到达目标
+    float beamHeight = magic->curr_beam->getContentSize().height;
+    if (beamHeight > 0)
+        magic->curr_beam->setScaleY(distance / beamHeight);
+    magic->curr_beam->setScaleX(1.0f); // 设置光束宽度
+
+    my_scene->addChild(magic->curr_beam);
+
+    // 播放魔法攻击音效
+    Music::getInstance()->magicSound();
+}
+
+// 更新光束位置和方向
+template <class T>
+void MagicAttackStrategy::UpdateBeamPosition(MagicTower *magic, T *target)
+{
+    // 检查魔法塔和光束是否存在
+    if (!magic || !magic->curr_beam || !target)
+        return;
+
+    // 计算新的方向和角度
+    Vec2 targetPos = target->getPosition();
+    Vec2 direction = targetPos - magic->pos;
+    float distance = direction.length();
+    float angle = 90.0f-CC_RADIANS_TO_DEGREES(direction.getAngle());
+
+    // 更新光束旋转和长度
+    magic->curr_beam->setRotation(angle);
+    float beamHeight = magic->curr_beam->getContentSize().height;
+    if (beamHeight > 0)
+        magic->curr_beam->setScaleY(distance / beamHeight);
+}
+
+// 处理光束对目标的持续伤害
+template <class T>
+void MagicAttackStrategy::ProcessBeamDamage(MagicTower *magic, BaseLevelScene *my_scene, T *target, float currentTime)
+{
+    // 检查是否到了造成伤害的时间
+    if (currentTime - magic->lastDamageTime >= magic->beamDamageInterval)
+    {
+        if (!target)
+        {
+            // 无目标，移除光束
+            magic->lockedTarget = nullptr;
+            if (magic->curr_beam)
+            {
+                magic->curr_beam->removeFromParent();
+                magic->curr_beam = nullptr;
+            }
+            return;
+        }
+
+        // 只要目标存活则造成伤害
+        if (target->getHealth() > 0)
+        {
+            DemageSprite(target, magic->GetDemage());
+
+            // 创建伤害特效
+            auto effect = Sprite::create("Towers/texiao_9.png");
+            if (effect)
+            {
+                effect->setPosition(target->getPosition());
+                my_scene->addChild(effect);
+
+                // 闪烁动画
+                auto fadeOut = FadeOut::create(0.3f);
+                auto remove = CallFunc::create([effect]() { effect->removeFromParent(); });
+                effect->runAction(Sequence::create(fadeOut, remove, nullptr));
+            }
+
+            // 如果目标死亡，尝试调用 toDie 并清理光束/锁定（如果是怪物）
+            if (target->getHealth() <= 0)
+            {
+                target->toDie(my_scene);
+                // 如果目标是怪物并且等于 lockedTarget，需要清除
+                Monster *m = dynamic_cast<Monster *>(target);
+                if (m && magic->lockedTarget == m)
+                {
+                    magic->lockedTarget = nullptr;
+                }
+                if (magic->curr_beam)
+                {
+                    magic->curr_beam->removeFromParent();
+                    magic->curr_beam = nullptr;
+                }
+            }
+        }
+        else
+        {
+            // 目标无效，移除光束
+            Monster *m = dynamic_cast<Monster *>(target);
+            if (m && magic->lockedTarget == m)
+                magic->lockedTarget = nullptr;
+            if (magic->curr_beam)
+            {
+                magic->curr_beam->removeFromParent();
+                magic->curr_beam = nullptr;
+            }
+        }
+
+        // 更新上次伤害时间
+        magic->lastDamageTime = currentTime;
+    }
 }

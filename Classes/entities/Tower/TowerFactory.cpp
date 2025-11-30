@@ -39,6 +39,24 @@ Tower* ShitFactory::createTower(int grade) {
     return shit;
 }
 
+// 风扇塔工厂实现 - 创建风扇塔实例并设置攻击策略
+Tower* FanFactory::createTower(int grade) {
+    // 创建风扇塔实例，参数4表示塔的类型索引
+    Fan* fan = new Fan(4, grade);
+    // 设置风扇塔的攻击策略
+    fan->setAttackStrategy(new FanAttackStrategy());
+    return fan;
+}
+
+// 魔法塔工厂实现 - 创建魔法塔实例并设置攻击策略
+Tower* MagicFactory::createTower(int grade) {
+    // 创建魔法塔实例，参数5表示塔的类型索引
+    MagicTower* magic = new MagicTower(5, grade);
+    // 设置魔法塔的攻击策略
+    magic->setAttackStrategy(new MagicAttackStrategy());
+    return magic;
+}
+
 // 工厂提供者实现 - 管理所有工厂实例并提供统一的创建接口
 
 // 根据塔类型获取对应的工厂实例
@@ -48,6 +66,8 @@ TowerFactory* TowerFactoryProvider::getFactory(int towerType) {
     static SunFactory sunFactory;
     static PlaneFactory planeFactory;
     static ShitFactory shitFactory;
+    static FanFactory fanFactory;
+    static MagicFactory magicFactory;
 
     // 根据塔类型返回对应的工厂实例
     switch (towerType) {
@@ -55,6 +75,8 @@ TowerFactory* TowerFactoryProvider::getFactory(int towerType) {
     case 1: return &sunFactory;     // 返回太阳塔工厂
     case 2: return &planeFactory;   // 返回飞机塔工厂
     case 3: return &shitFactory;    // 返回粪便塔工厂
+    case 4: return &fanFactory;     // 返回风扇塔工厂
+    case 5: return &magicFactory;   // 返回魔法塔工厂
     default: return nullptr;        // 无效类型返回空指针
     }
 }
