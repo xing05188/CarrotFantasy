@@ -17,11 +17,13 @@
 
 USING_NS_CC;
 
+
 // 前向声明
 class SkillController;
 class GameMenuController;
 class GameSpeedController;
 class CountDownController;
+#include "scenes/controllers/InputController.h"
 
 #define Y 9
 #define X 15
@@ -49,6 +51,8 @@ class BaseLevelScene : public cocos2d::Scene {
 public:
     virtual ~BaseLevelScene();
 private:
+    // 输入控制器
+    class InputController* inputController_ = nullptr;
     cocos2d::Node* plantsLayer;                              //ֲ��ͼ��
     TMXLayer* plantableLayer = nullptr;                      // plantable ��
     static const std::vector<std::string> mapFiles;          // �洢��ͼ�ļ���·��
@@ -107,11 +111,11 @@ public:
     bool initWithLevel(int level);                          //��д��init����
     CREATE_FUNC(BaseLevelScene);
     void loadMap();                                         // ���ص�ͼ�ĺ���
-    void addMouseListener();                                // ������������
+    // void addMouseListener(); // 移除，交由InputController管理
     void InitMapData();                                     //��ʼ����ͼ��Ϣ
     void ProduceObstacles();                                //�����ϰ���
     //�������
-    void handleMouseDown(EventMouse* event);                //�����ʱ���ж��Ƿ���ֲ
+    // void handleMouseDown(EventMouse* event); // 移除，交由InputController管理
     void handlePlant(const Vec2& position);                 // ��ֲ�ж�
     void PlantMenuAppear(Vec2 mapPos);                      //������ֲ�˵�
     void PlantMenuGone(Vec2 position);                      //��ֲ�˵���ʧ

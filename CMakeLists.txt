@@ -56,13 +56,14 @@ endif()
 
 # add cross-platforms source files and header files 
 list(APPEND GAME_SOURCE
-     Classes/core/AppDelegate.cpp
-     Classes/scenes/advantureScene.cpp
-     Classes/scenes/BaseLevelScene.cpp
-     Classes/scenes/controllers/SkillController.cpp
-     Classes/scenes/controllers/GameMenuController.cpp
-     Classes/scenes/controllers/GameSpeedController.cpp
-     Classes/scenes/controllers/CountDownController.cpp
+    Classes/core/AppDelegate.cpp
+    Classes/scenes/advantureScene.cpp
+    Classes/scenes/BaseLevelScene.cpp
+    Classes/scenes/controllers/SkillController.cpp
+    Classes/scenes/controllers/GameMenuController.cpp
+    Classes/scenes/controllers/GameSpeedController.cpp
+    Classes/scenes/controllers/CountDownController.cpp
+    Classes/scenes/controllers/InputController.cpp
      Classes/entities/Carrot/Carrot.cpp
      Classes/entities/Carrot/CarrotState.cpp
      Classes/core/GameManager.cpp
@@ -93,13 +94,14 @@ list(APPEND GAME_SOURCE
      )
 
 list(APPEND GAME_HEADER
-     Classes/core/AppDelegate.h
-     Classes/scenes/advantureScene.h
-     Classes/scenes/BaseLevelScene.h
-     Classes/scenes/controllers/SkillController.h
-     Classes/scenes/controllers/GameMenuController.h
-     Classes/scenes/controllers/GameSpeedController.h
-     Classes/scenes/controllers/CountDownController.h
+    Classes/core/AppDelegate.h
+    Classes/scenes/advantureScene.h
+    Classes/scenes/BaseLevelScene.h
+    Classes/scenes/controllers/SkillController.h
+    Classes/scenes/controllers/GameMenuController.h
+    Classes/scenes/controllers/GameSpeedController.h
+    Classes/scenes/controllers/CountDownController.h
+    Classes/scenes/controllers/InputController.h
      Classes/entities/Carrot/Carrot.h
      Classes/entities/Carrot/CarrotState.h
      Classes/core/GameManager.h

@@ -680,7 +680,12 @@ bool BaseLevelScene::initWithLevel(int level)
     // ✅ 监听器已在initLevel之前注册（第617-621行），这里不再重复注册
     plantsLayer = Layer::create();
     this->addChild(plantsLayer, 10);
-    addMouseListener();
+    // 初始化输入控制器
+    inputController_ = new InputController(this);
+    inputController_->setMouseDownCallback([this](const Vec2& pos) {
+        this->handlePlant(pos);
+    });
+    inputController_->addMouseListener();
 
     cell_flag = 1;
     buy_tower[0].push_back("Towers/THuo/affordhuo.png"); buy_tower[1].push_back("Towers/THuo/unaffordhuo.png");
@@ -823,17 +828,7 @@ void BaseLevelScene::ProduceObstacles()
 }
 /******************************************/
 
-void BaseLevelScene::addMouseListener() {
-    auto listener = EventListenerMouse::create();
-    listener->onMouseDown = CC_CALLBACK_1(BaseLevelScene::handleMouseDown, this);
-
-    _eventDispatcher->addEventListenerWithSceneGraphPriority(listener, this);
-}
-void BaseLevelScene::handleMouseDown(EventMouse* event) {
-    Vec2 mousePos = event->getLocation();
-    CCLOG("Mouse clicked at screen position: (%f, %f)", mousePos.x, mousePos.y);
-    handlePlant(mousePos);
-}
+// 输入相关逻辑已迁移到 InputController
 void BaseLevelScene::handlePlant(const Vec2& position) {
     CCLOG("position: (%f, %f)", position.x, position.y);
     Vec2 tileCoord = Vec2(floor(position.x / tileSize.width), floor(position.y / tileSize.height));
