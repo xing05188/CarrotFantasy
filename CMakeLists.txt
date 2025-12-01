@@ -67,6 +67,12 @@ list(APPEND GAME_SOURCE
      Classes/entities/Carrot/Carrot.cpp
      Classes/entities/Carrot/CarrotState.cpp
      Classes/core/GameManager.cpp
+     Classes/core/subsystem/MonsterManager.cpp
+     Classes/core/subsystem/PathManager.cpp
+     Classes/core/subsystem/CarrotManager.cpp
+     Classes/core/subsystem/GameSaveLoader.cpp
+     Classes/core/subsystem/GameStateChecker.cpp
+     Classes/core/subsystem/MoneySystem.cpp
      Classes/core/StorageService/StorageService.cpp
      Classes/scenes/menuScene.cpp
      Classes/entities/Monster/Monster.cpp
@@ -105,6 +111,13 @@ list(APPEND GAME_HEADER
      Classes/entities/Carrot/Carrot.h
      Classes/entities/Carrot/CarrotState.h
      Classes/core/GameManager.h
+     Classes/core/subsystem/MonsterManager.h
+     Classes/core/subsystem/MonsterTypes.h
+     Classes/core/subsystem/PathManager.h
+     Classes/core/subsystem/CarrotManager.h
+     Classes/core/subsystem/GameSaveLoader.h
+     Classes/core/subsystem/GameStateChecker.h
+     Classes/core/subsystem/MoneySystem.h
      Classes/core/StorageService/StorageService.h
      Classes/scenes/menuScene.h
      Classes/entities/Monster/Monster.h
