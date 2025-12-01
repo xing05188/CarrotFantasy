@@ -4,23 +4,30 @@
 #include "json/rapidjson.h"
 #include "json/writer.h"
 #include "json/stringbuffer.h"
-#include<fstream>
-#include <sstream>
 #include"Music.h"
 #include "EventBusProvider.h"
-#include "../gameplay/events/MoneyEvents.h"
-#include "../gameplay/events/GameFlowEvents.h"
 #include "../gameplay/events/MonsterEvents.h"
-#include "../gameplay/events/CarrotEvents.h"
 #include "../entities/Tower/TowerFactory.h"
 #include "../entities/Obstacle/Obstacle.h"
-#include "StorageService/StorageService.h"
 
 USING_NS_CC;
 extern int DeadCount;
 
 // 单例实例指针（全局唯一 GameManager）
 GameManager* GameManager::instance = nullptr;
+
+GameManager::GameManager()
+    : currentScene(nullptr),
+      pathManager(std::make_unique<PathManager>()),
+      monsterManager(std::make_unique<MonsterManager>(this)),
+      carrotManager(std::make_unique<CarrotManager>(this)),
+      gameSaveLoader(std::make_unique<GameSaveLoader>(this)),
+      gameStateChecker(std::make_unique<GameStateChecker>(this)),
+      moneySystem(std::make_unique<MoneySystem>(this)) {
+    if (moneySystem) {
+        moneySystem->SetMoney(kDefaultStartingMoney, false);
+    }
+}
 
 // 获取 GameManager 单例；首次调用时创建实例，并可顺便绑定当前场景
 GameManager* GameManager::getInstance(BaseLevelScene* scene) {
@@ -50,70 +57,33 @@ void GameManager::destroyInstance() {
 
 // 预留的逐帧更新接口，目前仅打印调试信息
 void GameManager::update(float deltaTime) {
-    CCLOG("monsters size %d", monsters.size());
+    CCLOG("monsters size %d", static_cast<int>(monsterManager->GetMonsters().size()));
     CCLOG("monsters DEAD NUM %d", DeadCount);
 }
 // 判断失败条件并仅发布一次游戏失败事件，供 UI 监听
 bool GameManager::CheckLose()
 {
-    if (carrot->getHP() <= 0)
-    {
-        CCLOG("LOSE THE GAME!");
-        PublishGameLostEvent();
-        return true;
-    }
-    return false;
+    return gameStateChecker ? gameStateChecker->CheckLose() : false;
 }
 // 判断胜利条件（全部波次完成且怪物清空）并发布胜利事件
 bool GameManager::CheckWin()
 {
-    if (waveIndex + 1 < AllWaveNum) return false;
-    if (carrot->getHP() <= 0) return false;
-    CCLOG("------------------------------------%d", monsters.size());
-    if (monsters.size() < static_cast<size_t>(AllMonsterNum)) return false;
-    for (auto it = monsters.begin(); it != monsters.end(); it++) {
-        if ((*it)->getHealth() > 0) return false;
-    }
-
-    CCLOG("WIN THE GAME!");
-    PublishGameWonEvent();
-    return true;
+    return gameStateChecker ? gameStateChecker->CheckWin() : false;
 }
 void GameManager::ApplyMonsterSpeed(float speedFactor) {
-    for (auto* monster : monsters) {
-        if (!monster) continue;
-        if (monster->getHealth() <= 0) continue;
-        if (monster->speedaction) {
-            monster->speedaction->setSpeed(speedFactor);
-        }
-    }
+    monsterManager->ApplyMonsterSpeed(speedFactor);
 }
 
 void GameManager::KillAllMonsters() {
-    auto bus = carrot::core::EventBusProvider::Get();
-    for (auto* monster : monsters) {
-        if (!monster) continue;
-        if (monster->getHealth() <= 0) continue;
-        monster->setHealth(0);
-        if (bus) {
-            carrot::gameplay::events::MonsterDiedEvent evt{};
-            evt.monster = monster;
-            bus->Publish(carrot::gameplay::events::kMonsterDiedEventId, evt);
-        }
-    }
+    monsterManager->KillAllMonsters();
 }
 
 // 初始化关卡的路径、波次、金币与胜负标记，并加载相关资源
 void GameManager::initLevel(int level,bool initMode)
 {
     levelId=level;
-    path.clear();
-    screenPath.clear();
-    monsters.clear();
-    waveConfigs.clear();
-    waveIndex=0;
-    ClearMonsters();
-    AllMonsterNum=0;
+    pathManager->ResetCurrentPath();
+    monsterManager->ResetForLevel();
     DeadCount=0;
     // 只有在非读档模式（新游戏）时才重置金钱，读档模式下金钱会从存档中恢复
     CCLOG("GameManager::initLevel: level=%d, initMode=%s, current money=%d", 
@@ -124,11 +94,12 @@ void GameManager::initLevel(int level,bool initMode)
     } else {
         CCLOG("GameManager::initLevel: Load mode - keeping current money: %d (will be loaded from file)", GetMoney());
     }
-    hasGameWon = false;
-    hasGameLost = false;
+    if (gameStateChecker) {
+        gameStateChecker->Reset();
+    }
     initPath();
     loadMonsterResources();
-    initCarrot();
+    carrotManager->InitCarrot();
      registerListener();
      
      if(!initMode)
@@ -145,312 +116,32 @@ void GameManager::initLevel(int level,bool initMode)
 }
 void GameManager::initPath()
 {
-    if (pathsCache.find(levelId) == pathsCache.end()) {
-        if (!loadPathForLevel(levelId, "paths.json")) {
-            CCLOG("Failed to load path for level %d.", levelId);
-            return;
-        }
-    }
-    path = pathsCache[levelId];
-    CCLOG("Path for level %d:", levelId);
-    for (const auto& point : path) {
-        CCLOG("Point: (%f, %f)", point.x, point.y);
-    }
-    CCLOG("%f", currentScene->tileMap->getMapSize().height);
-    for (const auto& gridPoint : path) {
-        screenPath.push_back(gridToScreenCenter(gridPoint));
-        float x = gridToScreenCenter(gridPoint).x;
-        float y = gridToScreenCenter(gridPoint).y;
-        CCLOG("ScreenPoint: (%f, %f)", x, y);
-    }
+    pathManager->InitPath(levelId, currentScene);
 }
 // 从 JSON 配置中读取某一关卡的路径数据，并缓存到 pathsCache / ScreenPaths
 bool GameManager::loadPathForLevel(int levelId, const std::string& filePath)
 {
-    if (pathsCache.find(levelId) != pathsCache.end()) {
-        return true;
-    }
-
-    std::string fileContent = cocos2d::FileUtils::getInstance()->getStringFromFile(filePath);
-    if (fileContent.empty()) {
-        CCLOG("Failed to load JSON file: %s", filePath.c_str());
-        return false;
-    }
-
-    rapidjson::Document document;
-    document.Parse(fileContent.c_str());
-
-    if (document.HasParseError() || !document.IsObject()) {
-        CCLOG("Failed to parse JSON or invalid format: %s", filePath.c_str());
-        return false;
-    }
-
-    for (auto& level : document.GetObject()) {
-        int levelIdInFile = std::stoi(level.name.GetString());
-        if (levelIdInFile == levelId) {
-
-            if (!level.value.IsArray()) {
-                CCLOG("Path data for level %d is not an array.", levelId);
-                return false;
-            }
-
-            const auto& points = level.value.GetArray();
-            std::vector<cocos2d::Vec2> path;
-
-            for (rapidjson::Value::ConstValueIterator it = points.Begin(); it != points.End(); ++it) {
-                if (!it->IsArray() || it->Size() != 2) {
-                    CCLOG("Invalid point format in level %d.", levelId);
-                    continue;
-                }
-
-                float x = (*it)[0].GetFloat();
-                float y = (*it)[1].GetFloat();
-                path.emplace_back(x, y);
-            }
-
-            if (path.empty()) {
-                CCLOG("No valid points found for level %d.", levelId);
-                return false;
-            }
-
-            pathsCache[levelId] = path;
-            for (const auto& point : pathsCache[levelId]) {
-                CCLOG("Grid Point: (%f, %f)", point.x, point.y);
-                Vec2 screenCenter = gridToScreenCenter(point);
-                ScreenPaths[levelId].emplace_back(screenCenter);
-                CCLOG("Center Screen Point: (%f, %f)", screenCenter.x, screenCenter.y);
-            }
-            return true;
-        }
-    }
-
-    CCLOG("Path for level %d not found in file: %s", levelId, filePath.c_str());
-    return false;
+    return pathManager->LoadPathForLevel(levelId, filePath, currentScene);
 }
 // 预加载所有怪物相关的帧动画资源，避免战斗过程中卡顿
 void GameManager::loadMonsterResources() {
-    SpriteFrameCache::getInstance()->addSpriteFramesWithFile("Monsters/pig.plist");
-    SpriteFrameCache::getInstance()->addSpriteFramesWithFile("Monsters/yellowbat.plist");
-    SpriteFrameCache::getInstance()->addSpriteFramesWithFile("Monsters/blue.plist");
-    SpriteFrameCache::getInstance()->addSpriteFramesWithFile("Monsters/tuzi.plist");
-    SpriteFrameCache::getInstance()->addSpriteFramesWithFile("Monsters/pink.plist");
-    SpriteFrameCache::getInstance()->addSpriteFramesWithFile("Monsters/boss.plist");
-    SpriteFrameCache::getInstance()->addSpriteFramesWithFile("Monsters/sheep.plist");
-    SpriteFrameCache::getInstance()->addSpriteFramesWithFile("Monsters/biao.plist");
-    SpriteFrameCache::getInstance()->addSpriteFramesWithFile("Monsters/star.plist");
-    SpriteFrameCache::getInstance()->addSpriteFramesWithFile("Monsters/bubble.plist");
-    SpriteFrameCache::getInstance()->addSpriteFramesWithFile("Monsters/fuck.plist");
-    SpriteFrameCache::getInstance()->addSpriteFramesWithFile("Monsters/BossYellow.plist");
-    SpriteFrameCache::getInstance()->addSpriteFramesWithFile("Monsters/BossSheep.plist");
-    if (!SpriteFrameCache::getInstance()->getSpriteFrameByName("pig_0.png")) {
-        CCLOG("Failed to load SpriteFrame 'pig_0.png'.");
-    }
-    if (!SpriteFrameCache::getInstance()->getSpriteFrameByName("pig_1.png")) {
-        CCLOG("Failed to load SpriteFrame 'pig_1.png'.");
-    }
-    if (!SpriteFrameCache::getInstance()->getSpriteFrameByName("yellowbat_0.png")) {
-        CCLOG("Failed to load SpriteFrame 'yellowbat_0.png'.");
-    }
-    if (!SpriteFrameCache::getInstance()->getSpriteFrameByName("yellowbat_1.png")) {
-        CCLOG("Failed to load SpriteFrame 'yellowbat_1.png'.");
-    }
-    if (!SpriteFrameCache::getInstance()->getSpriteFrameByName("blue_0.png")) {
-        CCLOG("Failed to load SpriteFrame 'blue_0.png'.");
-    }
-    if (!SpriteFrameCache::getInstance()->getSpriteFrameByName("blue_1.png")) {
-        CCLOG("Failed to load SpriteFrame 'blue_1.png'.");
-    }
-    if (!SpriteFrameCache::getInstance()->getSpriteFrameByName("tuzi_0.png")) {
-        CCLOG("Failed to load SpriteFrame 'tuzi_0.png'.");
-    }
-    if (!SpriteFrameCache::getInstance()->getSpriteFrameByName("tuzi_1.png")) {
-        CCLOG("Failed to load SpriteFrame 'tuzi_1.png'.");
-    }
-    if (!SpriteFrameCache::getInstance()->getSpriteFrameByName("pink_0.png")) {
-        CCLOG("Failed to load SpriteFrame 'pink_0.png'.");
-    }
-    if (!SpriteFrameCache::getInstance()->getSpriteFrameByName("pink_1.png")) {
-        CCLOG("Failed to load SpriteFrame 'pink_1.png'.");
-    }
-    if (!SpriteFrameCache::getInstance()->getSpriteFrameByName("boss_0.png")) {
-        CCLOG("Failed to load SpriteFrame 'boss_0.png'.");
-    }
-    if (!SpriteFrameCache::getInstance()->getSpriteFrameByName("boss_1.png")) {
-        CCLOG("Failed to load SpriteFrame 'boss_1.png'.");
-    }
-    if (!SpriteFrameCache::getInstance()->getSpriteFrameByName("sheep_0.png")) {
-        CCLOG("Failed to load SpriteFrame 'sheep_0.png'.");
-    }
-    if (!SpriteFrameCache::getInstance()->getSpriteFrameByName("sheep_1.png")) {
-        CCLOG("Failed to load SpriteFrame 'sheep_1.png'.");
-    }
-    if (!SpriteFrameCache::getInstance()->getSpriteFrameByName("fuck_0.png")) {
-        CCLOG("Failed to load SpriteFrame 'fuck_0.png'.");
-    }
-    if (!SpriteFrameCache::getInstance()->getSpriteFrameByName("fuck_1.png")) {
-        CCLOG("Failed to load SpriteFrame 'fuck_1.png'.");
-    }
-    if (!SpriteFrameCache::getInstance()->getSpriteFrameByName("bubble_0.png")) {
-        CCLOG("Failed to load SpriteFrame 'bubble_0.png'.");
-    }
-    if (!SpriteFrameCache::getInstance()->getSpriteFrameByName("bubble_1.png")) {
-        CCLOG("Failed to load SpriteFrame 'bubble_1.png'.");
-    }
-
-    if (!SpriteFrameCache::getInstance()->getSpriteFrameByName("star_0.png")) {
-        CCLOG("Failed to load SpriteFrame 'star_0.png'.");
-    }
-    if (!SpriteFrameCache::getInstance()->getSpriteFrameByName("star_1.png")) {
-        CCLOG("Failed to load SpriteFrame 'star_1.png'.");
-    }
-    if (!SpriteFrameCache::getInstance()->getSpriteFrameByName("biao_0.png")) {
-        CCLOG("Failed to load SpriteFrame 'biao_0.png'.");
-    }
-    if (!SpriteFrameCache::getInstance()->getSpriteFrameByName("biao_1.png")) {
-        CCLOG("Failed to load SpriteFrame 'biao_1.png'.");
-    }
-    if (!SpriteFrameCache::getInstance()->getSpriteFrameByName("BossYellow_0.png")) {
-        CCLOG("Failed to load SpriteFrame 'BossYellow_0.png'.");
-    }
-    if (!SpriteFrameCache::getInstance()->getSpriteFrameByName("BossYellow_1.png")) {
-        CCLOG("Failed to load SpriteFrame 'BossYellow_1.png'.");
-    }
-    if (!SpriteFrameCache::getInstance()->getSpriteFrameByName("BossSheep_0.png")) {
-        CCLOG("Failed to load SpriteFrame 'BossSheep_0.png'.");
-    }
-    if (!SpriteFrameCache::getInstance()->getSpriteFrameByName("BossSheep_1.png")) {
-        CCLOG("Failed to load SpriteFrame 'BossSheep_1.png'.");
-    }
+    monsterManager->LoadMonsterResources();
 }
 // 创建单个怪物并加入场景，可用于正常刷怪或读档恢复
 void GameManager::produceMonsters(const std::string monsterName, const int startIndex, int health, bool pause) {
-    Music::getInstance()->born_music();
-    if (startIndex == 0)
-        playSpawnEffect(screenPath[0]);
-    auto Monster = Monster::create(monsterName, screenPath, startIndex, pause);
-    if (!Monster) {
-        CCLOG("Failed to create monster.");
-        return;
-    }
-    // Diagnostic: log parent pointer immediately after creation to detect unexpected parenting
-    if (Monster->getParent()) {
-        auto parent = Monster->getParent();
-        const char* pname = parent->getName().c_str();
-        CCLOG("GameManager::produceMonsters: Created monster already has parent! Monster=%p, parent=%p, parentName=%s", Monster, parent, pname);
-    } else {
-        CCLOG("GameManager::produceMonsters: Created monster has no parent yet. Monster=%p", Monster);
-    }
-    monsters.push_back(Monster);
-    CCLOG("");
-    // 由事件通知场景把怪物节点挂到合适的位置/层级上
-    auto bus = carrot::core::EventBusProvider::Get();
-    if (bus) {
-        carrot::gameplay::events::MonsterSpawnedEvent evt{};
-        evt.monster = Monster;
-        bus->Publish(carrot::gameplay::events::kMonsterSpawnedEventId, evt);
-    }
-    // If no listener added the monster to the scene (or it was added to wrong parent), ensure it's attached to currentScene
-    if (Monster->getParent() == nullptr) {
-        if (currentScene) {
-            CCLOG("GameManager::produceMonsters: No subscriber added monster, attaching to currentScene. Monster=%p", Monster);
-            currentScene->addChild(Monster);
-        } else {
-            CCLOG("GameManager::produceMonsters: currentScene is null, cannot attach monster. Monster=%p", Monster);
-        }
-    } else if (Monster->getParent() != currentScene) {
-        // 如果怪物被错误地添加到其他节点，先移除再挂到当前场景
-        auto oldParent = Monster->getParent();
-        CCLOG("GameManager::produceMonsters: Monster has parent %p (name=%s), reparenting to currentScene %p. Monster=%p",
-              oldParent, oldParent->getName().c_str(), currentScene, Monster);
-        oldParent->removeChild(Monster);
-        if (currentScene) {
-            currentScene->addChild(Monster);
-        }
-    }
-    Monster->setPause(pause);
-    CCLOG("MONSTER PAUSE  %d", Monster->getPause());
-    if (health != -1)
-    {
-        Monster->setHealth(health);
-    }
-    if(monsterName.find("Boss") == 0)
-    {
-      
-    Monster->SpecialAttack();
-    }
+    monsterManager->ProduceMonsters(monsterName, startIndex, health, pause);
 }
 // 从 JSON 文件中读取某个关卡的全部波次配置
 void GameManager::loadMonsterWaveConfig(const std::string& filename, const std::string& levelName) {
-    std::string path = FileUtils::getInstance()->fullPathForFilename(filename);
-    std::string fileContent = FileUtils::getInstance()->getStringFromFile(path);
-
-    rapidjson::Document doc;
-    doc.Parse(fileContent.c_str());
-
-    if (doc.HasParseError()) {
-        CCLOG("Error parsing JSON file: %s", filename.c_str());
-        return;
-    }
-    if (doc.HasMember(levelName.c_str())) {
-        const rapidjson::Value& waves = doc[levelName.c_str()];
-        for (rapidjson::SizeType i = 0; i < waves.Size(); ++i) {
-            const rapidjson::Value& wave = waves[i];
-            WaveConfig waveConfig;
-            waveConfig.wave = wave["wave"].GetInt();
-            waveConfig.monsterName = wave["monsterName"].GetString();
-
-            waveConfig.count = wave["count"].GetInt();
-
-            const rapidjson::Value& spawnInterval = wave["spawnInterval"];
-            waveConfig.spawnInterval[0] = spawnInterval[0].GetFloat();
-            waveConfig.spawnInterval[1] = spawnInterval[1].GetFloat();
-            waveConfigs.push_back(waveConfig);
-            AllWaveNum = waveConfigs.size();
-            CCLOG("Wave %d - Monster: %s, Count: %d, Spawn Interval: %.2f - %.2f",
-                waveConfigs.size(),
-                waveConfig.monsterName.c_str(),
-                waveConfig.count,
-                waveConfig.spawnInterval[0],
-                waveConfig.spawnInterval[1]
-            );
-        }
-    }
-    else {
-        CCLOG("No such level: %s", levelName.c_str());
-    }
-    for (auto waveConfig : waveConfigs)
-    {
-        AllMonsterNum += waveConfig.count;
-    }
-    CCLOG("All Num %d ", AllMonsterNum);
+    monsterManager->LoadMonsterWaveConfig(filename, levelName);
 }
 // 按照一条波次配置，利用调度器在一段时间内依次生成该波全部怪物
 void GameManager::produceMonsterWave(const WaveConfig& waveConfig) {
-    float delay = 0;
-    CCLOG("%d   %d", waveIndex,AllWaveNum);
-    for (int i = 0; i < waveConfig.count; ++i) {
-        delay += cocos2d::RandomHelper::random_real(waveConfig.spawnInterval[0], waveConfig.spawnInterval[1]);
-
-        cocos2d::Director::getInstance()->getScheduler()->schedule([=](float) {
-            produceMonsters(waveConfig.monsterName, 0, -1, false);
-            }, this, 0, 0, delay, false, "produceMonster" + std::to_string(i));
-    }
+    monsterManager->ProduceMonsterWave(waveConfig);
 }
 // 入口：开始整局战斗的刷怪流程，会按固定间隔推进到下一波
 void GameManager::startMonsterWaves() {
-    CCLOG("Starting wave %d", waveIndex);
-    produceMonsterWave(waveConfigs[waveIndex]);
-    cocos2d::Director::getInstance()->getScheduler()->schedule([this](float) {
-        if (waveIndex >= static_cast<int>(waveConfigs.size()) - 1) {
-            CCLOG("All waves are complete.");
-            cocos2d::Director::getInstance()->getScheduler()->unschedule("startWave", this);
-            return;
-        }
-        ++waveIndex;
-        CCLOG("Starting wave %d", waveIndex);
-        produceMonsterWave(waveConfigs[waveIndex]);
-
-        }, this, 15.0f, false, "startWave");
+    monsterManager->StartMonsterWaves();
 }
 void GameManager::playSpawnEffect(const cocos2d::Vec2& spawnPosition) {
     auto bus = carrot::core::EventBusProvider::Get();
@@ -470,7 +161,8 @@ void GameManager::onMonsterPathComplete(cocos2d::EventCustom* event)
 
     if (monster) {
         CCLOG("Monster has completed the path. Perform further actions here.");
-        if (monster->getHealth() > 0)
+        auto* carrot = getCarrot();
+        if (monster->getHealth() > 0 && carrot)
         {
             monster->setHealth(0);
             carrot->getDamage(monster->getDamage());
@@ -487,231 +179,39 @@ void GameManager::onMonsterPathComplete(cocos2d::EventCustom* event)
 // 清理当前所有怪物节点及其动作，用于重新开始或退出关卡
 void GameManager::ClearMonsters()
 {
-    for (auto monster : monsters) {
-        if (monster->getParent()) {
-            monster->getParent()->removeChild(monster);
-        }
-        monster->stopAllActions();
-        monster->release();
-    }
-    monsters.clear();
+    monsterManager->ClearMonsters();
 }
 
 bool GameManager::loadGameData(const std::string& fileName) {
-    waveConfigs.clear();
-    WaveConfig waveConfig;
-    std::string filePath = cocos2d::FileUtils::getInstance()->getWritablePath() + fileName;
-    CCLOG("Loading save file: %s", filePath.c_str());
-
-    std::ifstream ifs(filePath);
-    if (!ifs.is_open()) {
-        CCLOG("Cannot open save file: %s", filePath.c_str());
+    if (!gameSaveLoader) {
         return false;
     }
-
-    std::stringstream buffer;
-    buffer << ifs.rdbuf();
-    std::string fileContent = buffer.str();
-    ifs.close();
-    CCLOG("File content: %s", fileContent.c_str());
-
-    rapidjson::Document document;
-    if (document.Parse(fileContent.c_str()).HasParseError()) {
-        CCLOG("JSON parse error");
-        return false;
-    }
-
-    if (document.HasMember("livemonsters") && document["livemonsters"].IsArray()) {
-        const rapidjson::Value& livingMonsters = document["livemonsters"];
-        for (rapidjson::SizeType i = 0; i < livingMonsters.Size(); ++i) {
-            const rapidjson::Value& monsterData = livingMonsters[i];
-            if (monsterData.IsObject()) {
-                std::string monsterName = monsterData["monsterName"].GetString();
-                int pathIndex = monsterData["pathIndex"].GetInt();
-                int health = monsterData["health"].GetInt();
-                produceMonsters(monsterName, pathIndex,health,true);
-                CCLOG("readMonsters: name=%s, pathIndex=%d, health=%d", monsterName.c_str(), pathIndex, health);
-                AllMonsterNum++; 
-            }
-        }
-    }
-
-    if (document.HasMember("currentWave") && document["currentWave"].IsObject()) {
-        const rapidjson::Value& currentWave = document["currentWave"];
-        std::string monsterName = currentWave["monsterName"].GetString();
-        int count = currentWave["count"].GetInt();
-            waveConfig.monsterName = monsterName;
-            waveConfig.count = count;
-            AllMonsterNum+=count;
-            waveConfigs.push_back(waveConfig);
-            CCLOG("currentWave: name=%s, count=%d", monsterName.c_str(), count);
-    }
-
-    if (document.HasMember("waveIndex") && document["waveIndex"].IsInt()) {
-        int waveIndex = document["waveIndex"].GetInt();
-        CCLOG("currentIndex: %d", waveIndex);
-        this->waveIndex = waveIndex;
-    }
-    AllWaveNum= waveIndex+1;
-    if (document.HasMember("upcomingWaves") && document["upcomingWaves"].IsArray()) {
-        const rapidjson::Value& upcomingWaves = document["upcomingWaves"];
-        for (rapidjson::SizeType i = 0; i < upcomingWaves.Size(); ++i) {
-            const rapidjson::Value& waveData = upcomingWaves[i];
-            if (waveData.IsObject()) {
-                std::string monsterName = waveData["monsterName"].GetString();
-                int count = waveData["count"].GetInt();
-                waveConfig.monsterName = monsterName;
-                waveConfig.count = count;
-               AllMonsterNum += count;
-                AllWaveNum++;
-                waveConfigs.push_back(waveConfig);
-                CCLOG("upComingWave: name=%s, count=%d", monsterName.c_str(), count);
-            }
-        }
-    }
-    
-    CCLOG("Read All Data!");
-    return true;
+    return gameSaveLoader->LoadGameData(fileName);
 }
 void GameManager::saveMonstersDataToJson(const std::string& fileName) {
-    rapidjson::Document document;
-    document.SetObject();
-    int currentWaveIndex = getCurrentWaveIndex();
-    rapidjson::Value livingMonsters(rapidjson::kArrayType);
-    for (auto* monster : monsters) {
-        if (monster->checkLive()) {
-            rapidjson::Value monsterData(rapidjson::kObjectType);
-            // monsterName
-            monsterData.AddMember("monsterName", rapidjson::Value(monster->getMonsterName().c_str(), document.GetAllocator()), document.GetAllocator());
-            // pathIndex
-            monsterData.AddMember("pathIndex", monster->getPathIndex(), document.GetAllocator());
-            // health
-            monsterData.AddMember("health", monster->getHealth(), document.GetAllocator());
-            livingMonsters.PushBack(monsterData, document.GetAllocator());
-        }
-    }
-    document.AddMember("livemonsters", livingMonsters, document.GetAllocator());
-    int totalMonstersCount = 0;
-    for (int i = 0; i <= currentWaveIndex; ++i) {
-        totalMonstersCount += waveConfigs[i].count;
-    }
-    int remainingCount = totalMonstersCount - monsters.size();
-    rapidjson::Value currentWave(rapidjson::kObjectType);
-    currentWave.AddMember("monsterName", rapidjson::Value(waveConfigs[currentWaveIndex].monsterName.c_str(), document.GetAllocator()), document.GetAllocator());
-    currentWave.AddMember("count", remainingCount, document.GetAllocator());
-    document.AddMember("currentWave", currentWave, document.GetAllocator());
-    document.AddMember("waveIndex", currentWaveIndex, document.GetAllocator());
-    rapidjson::Value upcomingWaves(rapidjson::kArrayType);
-    for (size_t i = currentWaveIndex + 1; i < waveConfigs.size(); ++i) {
-        rapidjson::Value waveData(rapidjson::kObjectType);
-        waveData.AddMember("monsterName", rapidjson::Value(waveConfigs[i].monsterName.c_str(), document.GetAllocator()), document.GetAllocator());
-        waveData.AddMember("count", waveConfigs[i].count, document.GetAllocator());
-        upcomingWaves.PushBack(waveData, document.GetAllocator());
-    }
-    document.AddMember("upcomingWaves", upcomingWaves, document.GetAllocator());
-    std::string writablePath = FileUtils::getInstance()->getWritablePath();
-    std::string filePath = writablePath + fileName;
-    rapidjson::StringBuffer buffer;
-    rapidjson::Writer<rapidjson::StringBuffer> writer(buffer);
-    document.Accept(writer);
-    std::ofstream ofs(filePath);
-    if (ofs.is_open()) {
-        ofs << buffer.GetString();
-        ofs.close();
-        CCLOG("Save success: %s", filePath.c_str());
-    }
-    else {
-        CCLOG("Save failed: %s", filePath.c_str());
+    if (gameSaveLoader) {
+        gameSaveLoader->SaveMonstersDataToJson(fileName);
     }
 }
 void GameManager::doudong() {
-    if (!carrot) {
-        return;
-    }
-    if (carrot->getHP() == carrot->getMaxHP()) {
-        auto bus = carrot::core::EventBusProvider::Get();
-        if (!bus) {
-            CCLOG("GameManager: EventBus not available, carrot shake event not published");
-            return;
-        }
-        carrot::gameplay::events::CarrotShakeRequestedEvent evt{};
-        // 使用当前关卡目标点作为抖动特效位置
-        evt.x = dst1[levelId - 1].x;
-        evt.y = dst1[levelId - 1].y;
-        bus->Publish(carrot::gameplay::events::kCarrotShakeRequestedEventId, evt);
+    if (carrotManager) {
+        carrotManager->Doudong();
     }
 }
-void GameManager::initCarrot() {
-    carrot = Carrot::create(10, dst1[levelId - 1], dst2[levelId - 1]);
-    if (carrot) {
-        if (carrot->getParent() == nullptr) {
-            currentScene->addChild(carrot, 1);
-        } else {
-            CCLOG("GameManager::initCarrot: carrot already has parent, skipping addChild.");
-        }
-    } else {
-        CCLOG("GameManager::initCarrot: Failed to create carrot.");
-    }
-    CCLOG("CARROT READY!");
+int GameManager::GetMoney() const {
+    return moneySystem ? moneySystem->GetMoney() : 0;
 }
-
 // 所有加减金币操作从这里入口，再统一走 SetMoney
 void GameManager::ChangeMoney(int delta) {
-    SetMoney(money + delta);
+    if (moneySystem) {
+        moneySystem->ChangeMoney(delta);
+    }
 }
 
 // 设置金币并按需通知监听者，保持 HUD 等同步
 void GameManager::SetMoney(int value, bool publishEvent) {
-    int oldMoney = money;
-    int delta = value - money;
-    money = value;
-    CCLOG("GameManager::SetMoney: %d -> %d (delta: %d, publishEvent: %s)", 
-          oldMoney, money, delta, publishEvent ? "true" : "false");
-    if (publishEvent) {
-        PublishMoneyChangedEvent(delta);
-    }
-}
-
-// 发布金币变化事件，UI 与其他系统可通过事件解耦
-void GameManager::PublishMoneyChangedEvent(int delta) {
-    carrot::gameplay::events::MoneyChangedEvent evt{};
-    evt.delta = delta;
-    evt.current = money;
-    auto bus = carrot::core::EventBusProvider::Get();
-    if (bus) {
-        bus->Publish(carrot::gameplay::events::kMoneyChangedEventId, evt);
-    }
-}
-
-// 胜利事件只发送一次，Scene/UI 通过订阅获知
-void GameManager::PublishGameWonEvent() {
-    if (hasGameWon || hasGameLost) {
-        return;
-    }
-    hasGameWon = true;
-    carrot::gameplay::events::GameWonEvent evt{};
-    evt.currentWave = getCurrentWaveNum();
-    evt.totalWave = getAllWaveNum();
-    evt.levelId = levelId;
-    auto bus = carrot::core::EventBusProvider::Get();
-    if (bus) {
-        bus->Publish(carrot::gameplay::events::kGameWonEventId, evt);
-    }
-}
-
-// 失败事件也只发送一次，避免 Scene/UI 轮询
-void GameManager::PublishGameLostEvent() {
-    if (hasGameLost || hasGameWon) {
-        return;
-    }
-    hasGameLost = true;
-    carrot::gameplay::events::GameLostEvent evt{};
-    evt.currentWave = getCurrentWaveNum();
-    evt.totalWave = getAllWaveNum();
-    evt.levelId = levelId;
-    auto bus = carrot::core::EventBusProvider::Get();
-    if (bus) {
-        bus->Publish(carrot::gameplay::events::kGameLostEventId, evt);
+    if (moneySystem) {
+        moneySystem->SetMoney(value, publishEvent);
     }
 }
 
@@ -729,56 +229,79 @@ void GameManager::removeListener() {
     }
 }
 
-
-
-
 void GameManager::Jineng1()
 {
-    carrot->getRecover();
+    if (carrotManager) {
+        carrotManager->Jineng1();
+    }
 }
 
 void GameManager::Jineng6()
 {
-    carrot->enterInvincibleState();
+    if (carrotManager) {
+        carrotManager->Jineng6();
+    }
 }
 void GameManager::stopAllSchedulers() {
     CCLOG("Stopping all schedulers for GameManager.");
     cocos2d::Director::getInstance()->getScheduler()->unscheduleAllForTarget(this);
 }
 Vec2 GameManager::gridToScreenCenter(const Vec2& gridPoint) {
-    float mapHeight = currentScene->tileMap->getMapSize().height;
-    float screenX = gridPoint.x * (currentScene->tileSize.height) + (currentScene->tileSize.width) / 2;
-    float screenY = (mapHeight - gridPoint.y - 1) * (currentScene->tileSize.height) + (currentScene->tileSize.height) / 2;
-    return Vec2(screenX, screenY);
+    return pathManager->GridToScreenCenter(gridPoint, currentScene);
 }
 
 // 存档/读档功能实现
 void GameManager::saveGameState() {
-    StorageService::getInstance()->saveGameState();
+    if (gameSaveLoader) {
+        gameSaveLoader->SaveGameState();
+    }
 }
 
 void GameManager::saveTowerData() {
-    if (!currentScene) {
-        CCLOG("GameManager: currentScene is null, cannot save tower data");
-        return;
+    if (gameSaveLoader) {
+        gameSaveLoader->SaveTowerData();
     }
-    StorageService::getInstance()->saveTowerData(currentScene, levelId, GetMoney());
 }
 
 bool GameManager::loadTowerData(const std::string& filename) {
-    if (!currentScene) {
-        CCLOG("GameManager::loadTowerData: ERROR - currentScene is null, cannot load tower data");
+    if (!gameSaveLoader) {
         return false;
     }
-    CCLOG("GameManager::loadTowerData: Loading file %s, current money: %d", filename.c_str(), GetMoney());
-    bool result = StorageService::getInstance()->loadTowerData(currentScene, filename, 
-        [this](int money) { 
-            CCLOG("GameManager::loadTowerData callback: Setting money to %d", money);
-            // 发布事件以更新 UI（MoneyHud 监听此事件）
-            SetMoney(money, true); 
-            CCLOG("GameManager::loadTowerData callback: Money after SetMoney: %d", GetMoney());
-        });
-    CCLOG("GameManager::loadTowerData: Load result: %s, final money: %d", 
-          result ? "success" : "failed", GetMoney());
-    return result;
+    return gameSaveLoader->LoadTowerData(filename);
+}
+
+int GameManager::getCurrentWaveIndex() const {
+    return monsterManager->GetCurrentWaveIndex();
+}
+
+int GameManager::getAllWaveNum() const {
+    return monsterManager->GetAllWaveNum();
+}
+
+int GameManager::getCurrentWaveNum() const {
+    return monsterManager->GetCurrentWaveIndex();
+}
+
+int GameManager::getAllMonsterNum() const {
+    return monsterManager->GetAllMonsterNum();
+}
+
+std::vector<Monster*>& GameManager::GetMonsters() {
+    return monsterManager->GetMonsters();
+}
+
+const std::vector<Vec2>& GameManager::GetScreenPath() const {
+    return pathManager->GetScreenPath();
+}
+
+const std::vector<Vec2>& GameManager::GetPath() const {
+    return pathManager->GetPath();
+}
+
+int GameManager::getLevelId() const {
+    return levelId;
+}
+
+Carrot* GameManager::getCarrot() const {
+    return carrotManager ? carrotManager->GetCarrot() : nullptr;
 }

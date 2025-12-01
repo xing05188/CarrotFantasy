@@ -75,7 +75,7 @@ bool Monster::initWithPath(const std::string& monsterName, const std::vector<Vec
         return false;
     }
     // ���ع�������
-    MonsterConfig config = MonsterManager::getMonsterConfigByName(monsterName);
+    MonsterConfig config = MonsterConfigManager::getMonsterConfigByName(monsterName);
     this->startPosIndex=startIndex;
     this->maxHp=this->health=config.health;
     this->speed=config.speed;

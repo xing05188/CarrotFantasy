@@ -5,14 +5,14 @@
 #include "json/document.h"
 #include "json/rapidjson.h"
 struct MonsterConfig {
-    std::string spriteFrameName;  // ¹ÖÎïÍ¼Æ¬×ÊÔ´
-    int health;                   // ÉúÃüÖµ
-    float speed;                  // ÒÆ¶¯ËÙ¶È
-    int damage;                   // ¹¥»÷Á¦
-    int reward;                   // »÷É±½±Àø
+    std::string spriteFrameName;  // ï¿½ï¿½ï¿½ï¿½Í¼Æ¬ï¿½ï¿½Ô´
+    int health;                   // ï¿½ï¿½ï¿½ï¿½Öµ
+    float speed;                  // ï¿½Æ¶ï¿½ï¿½Ù¶ï¿½
+    int damage;                   // ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½
+    int reward;                   // ï¿½ï¿½É±ï¿½ï¿½ï¿½ï¿½
 };
 
-class MonsterManager {
+class MonsterConfigManager {
 public:
     static MonsterConfig getMonsterConfigByName(const std::string& monsterName) ;
 };

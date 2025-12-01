@@ -2,56 +2,48 @@
 
 #include "cocos2d.h"
 #include "entities/Monster/Monster.h"
+#include "subsystem/MonsterTypes.h"
+#include "subsystem/MonsterManager.h"
+#include "subsystem/PathManager.h"
+#include "subsystem/CarrotManager.h"
+#include "subsystem/GameSaveLoader.h"
+#include "subsystem/GameStateChecker.h"
+#include "subsystem/MoneySystem.h"
 #include<vector>
-#include<map>
+#include<memory>
 #include<string>
 #include"BaseLevelScene.h"
 #include<array>
 #include"entities/Carrot/Carrot.h"
 USING_NS_CC;
 
-//���޲�����Ϣ
-struct WaveConfig {
-    int wave;
-    std::string monsterName;
-    int count;
-    std::array<float, 2> spawnInterval={1,2};  // ���ɼ���ķ�Χ [0.0, 2.0] ֮��
-};
-//һ�����Ĺ�����Ŀ
-const int MAX_MONSTER_NUM=150;
-
 class GameManager {
 private:
+    friend class MonsterManager;
+    friend class CarrotManager;
+    friend class GameSaveLoader;
+    friend class GameStateChecker;
     // Ŀ��λ�õ����飬����levelId��1��2��3�ĳ����ؿ�
     std::vector<cocos2d::Vec2> dst1 = { Vec2(804, 444), Vec2(826, 430), Vec2(831, 353) }; //萝卜位置
     std::vector<cocos2d::Vec2> dst2 = { Vec2(854, 444), Vec2(886, 430), Vec2(881, 353) }; //血条位置
     //���������
     static GameManager* instance;                                        // ����ָ��
     BaseLevelScene* currentScene;                                        // ��ǰ�󶨵ĳ���
-    GameManager() : currentScene(nullptr), monsters(MAX_MONSTER_NUM) {}  // ˽�л����캯������ֹ�ⲿʵ����                                   
-    //�ܲ����
-    Carrot* carrot;                                          // Carrot����
-    void initCarrot();                                       //ÿ�س�ʼ���ܲ�
+    GameManager();                                   // ˽�л����캯������ֹ�ⲿʵ����                                   
     //����
-    int AllMonsterNum=0;                                    // ��������
-    std::vector<WaveConfig> waveConfigs;                    //�洢���޲�
-    int waveIndex = 0;                                      //��ǰ����
-    int AllWaveNum=0;
     static constexpr int kDefaultStartingMoney = 1000;
-    int money = kDefaultStartingMoney;
-    bool hasGameWon = false;
-    bool hasGameLost = false;
     //·��
-    std::map<int, std::vector<cocos2d::Vec2>>pathsCache;     //�洢�Ѿ����ع��Ĺؿ�������·��
-    std::map<int, std::vector<cocos2d::Vec2>>ScreenPaths;    //�洢�Ѿ����ع��Ĺؿ�����Ļ·��
-    std::vector<cocos2d::Vec2> path;                         //��ǰ��Ļ����·��
-    std::vector<cocos2d::Vec2> screenPath;                   //��ǰ��Ļ·��
+    //·��
+    std::unique_ptr<PathManager> pathManager;
     //�ؿ�
     int levelId;                                             //�ؿ����
     //�¼�������
     cocos2d::EventListenerCustom* _listener;                 //���ڼ����޵����յ���¼�
-    // �����б�（只允许通过接口对外暴露）
-    std::vector<Monster*> monsters;
+    std::unique_ptr<MonsterManager> monsterManager;
+    std::unique_ptr<CarrotManager> carrotManager;
+    std::unique_ptr<GameSaveLoader> gameSaveLoader;
+    std::unique_ptr<GameStateChecker> gameStateChecker;
+    std::unique_ptr<MoneySystem> moneySystem;
 public:
     void stopAllSchedulers();                                //ֹͣmanager�����е�����
     GameManager(const GameManager&) = delete;               
@@ -77,12 +69,12 @@ public:
     void startMonsterWaves();                                //��ʼ���޲�
     void playSpawnEffect(const cocos2d::Vec2& spawnPosition);//���޳�����Ч
     void ClearMonsters();                                    //������й����ڴ�
-    int getCurrentWaveIndex() const{return waveIndex;}       //��ȡ��ǰ���޲����
-    int getAllWaveNum()const { return AllWaveNum; }          //��ȡ�ܲ���
-    int getCurrentWaveNum()const { return waveIndex; }       //��ȡ�ֲ���
-    int getAllMonsterNum()const{return AllMonsterNum;}
+    int getCurrentWaveIndex() const;       //��ȡ��ǰ���޲����
+    int getAllWaveNum()const;          //��ȡ�ܲ���
+    int getCurrentWaveNum()const;       //��ȡ�ֲ���
+    int getAllMonsterNum()const;
     // 提供对怪物容器的只读引用，封装内部成员
-    std::vector<Monster*>& GetMonsters() { return monsters; }
+    std::vector<Monster*>& GetMonsters();
     // 全局控制：给所有存活怪物应用一个速度倍率
     void ApplyMonsterSpeed(float speedFactor);
     // 技能 / 调试：立刻杀死所有存活怪物（用于清场炸弹）
@@ -93,6 +85,9 @@ public:
                                                              //���ص�ͼ����
     void saveMonstersDataToJson(const std::string& fileName);//�洢��������
     Vec2 gridToScreenCenter(const Vec2& gridPoint);
+    const std::vector<cocos2d::Vec2>& GetScreenPath() const;
+    const std::vector<cocos2d::Vec2>& GetPath() const;
+    int getLevelId() const;
     // 存档/读档功能（通过 StorageService 实现）
     void saveGameState();                                        //保存关卡状态
     void saveTowerData();                                        //保存塔和障碍物数据
@@ -103,13 +98,9 @@ public:
     void onMonsterPathComplete(cocos2d::EventCustom* event); // �¼��ص�
     void Jineng1();
     void Jineng6();
-    Carrot* getCarrot() const { return carrot; }
+    Carrot* getCarrot() const;
     void doudong();
-    int GetMoney() const { return money; }
+    int GetMoney() const;
     void ChangeMoney(int delta);
     void SetMoney(int value, bool publishEvent = true);
-private:
-    void PublishMoneyChangedEvent(int delta);
-    void PublishGameWonEvent();
-    void PublishGameLostEvent();
 };
