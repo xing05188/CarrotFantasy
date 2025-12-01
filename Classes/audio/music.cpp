@@ -3,6 +3,8 @@
 Music* Music::instance = nullptr;
 
 const std::string AudioConfig::BGM = "Music/bgm.mp3";
+const std::string AudioConfig::BGM1 = "Music/bgm1.mp3";
+const std::string AudioConfig::BGM2 = "Music/bgm2.mp3";
 const std::string AudioConfig::BUTTON = "Music/button.mp3";
 const std::string AudioConfig::PAGE = "Music/page.mp3";
 const std::string AudioConfig::BUILD = "Music/build.mp3";
@@ -83,7 +85,7 @@ IAudioStrategy* AudioStrategyFactory::createAudioStrategy(AudioType type) {
     }
 }
 
-Music::Music() : musicEnabled(true) {
+Music::Music() : musicEnabled(true), currentBGMIndex(0) {
     backgroundStrategy = AudioStrategyFactory::createAudioStrategy(AudioType::BACKGROUND);
     soundEffectStrategy = AudioStrategyFactory::createAudioStrategy(AudioType::GAME_EFFECT);
 }
@@ -106,13 +108,35 @@ void Music::preloadSoundEffect(const std::string& music_file) {
 
 void Music::background_music() {
     if (musicEnabled) {
-        int audioId = backgroundStrategy->play(AudioConfig::BGM, true, 0.5f);
-        audioIds[AudioConfig::BGM] = audioId;
-    } else {
-        auto iter = audioIds.find(AudioConfig::BGM);
-        if (iter != audioIds.end()) {
-            backgroundStrategy->pause(iter->second);
+        // 停止所有背景音乐
+        std::vector<std::string> bgmPaths = {AudioConfig::BGM, AudioConfig::BGM1, AudioConfig::BGM2};
+        for (const auto &path : bgmPaths){
+            auto iter = audioIds.find(path);
+            if (iter != audioIds.end()){
+                backgroundStrategy->stop(iter->second);
+                audioIds.erase(iter);
+            }
         }
+        std::string bgmPath = bgmPaths[currentBGMIndex];
+        // 播放新的背景音乐
+        int audioId = backgroundStrategy->play(bgmPath, true, 1.0f);
+        audioIds[bgmPath] = audioId;
+    } else {
+        // 暂停所有背景音乐
+        std::vector<std::string> bgmPaths = {AudioConfig::BGM, AudioConfig::BGM1, AudioConfig::BGM2};
+        for (const auto& path : bgmPaths) {
+            auto iter = audioIds.find(path);
+            if (iter != audioIds.end()) {
+                backgroundStrategy->pause(iter->second);
+            }
+        }
+    }
+}
+
+void Music::changeBackgroundMusic(int bgmIndex) {
+    if (bgmIndex >= 0 && bgmIndex <= 2) {
+        currentBGMIndex = bgmIndex;
+        background_music();
     }
 }
 

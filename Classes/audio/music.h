@@ -64,6 +64,7 @@ class Music {
 private:
     static Music* instance;
     bool musicEnabled;
+    int currentBGMIndex; // 当前背景音乐索引 (0: 默认BGM, 1: BGM1, 2: BGM2)
     IAudioStrategy* backgroundStrategy;
     IAudioStrategy* soundEffectStrategy;
     std::unordered_map<std::string, int> audioIds;
@@ -77,6 +78,7 @@ public:
 
     void preloadSoundEffect(const std::string& music_file);
     void background_music();
+    void changeBackgroundMusic(int bgmIndex); // 切换背景音乐
 
     void button_music();
     void page_music();
@@ -108,12 +110,15 @@ public:
 
     int is_play();
     void set_music(int option);
+    int getCurrentBGMIndex() const { return currentBGMIndex; }
 };
 
 // 音频配置类
 class AudioConfig {
 public:
     static const std::string BGM;
+    static const std::string BGM1;
+    static const std::string BGM2;
     static const std::string BUTTON;
     static const std::string PAGE;
     static const std::string BUILD;
