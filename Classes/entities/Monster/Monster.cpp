@@ -1,5 +1,6 @@
 #include"Monster.h"
 #include"MonsterFactory.h"
+#include"SkillDecorator.h"
 
 #include"music.h"
 #include"BaseLevelScene.h"
@@ -58,23 +59,23 @@ bool Monster::initializeMonsterWithHealthBar(Monster* monster,
     return false;
 }
 
-// ��ʼ������
+// 初始化怪物
 bool Monster::initWithPath(const std::string& monsterName, const std::vector<Vec2>& path, int startIndex,bool pause) {
-    // ���ؾ���֡��Դ
+    // 加载怪物帧动画资源
     std::string plistPath = "Monsters/" + monsterName + ".plist";
     SpriteFrameCache::getInstance()->addSpriteFramesWithFile(plistPath);
-    // ��龫��֡�Ƿ����
+    // 检查精灵帧是否存在
     std::string frameName = monsterName + "_0.png";
     if (!SpriteFrameCache::getInstance()->getSpriteFrameByName(frameName)) {
         CCLOG("Failed to load SpriteFrame '%s'.", frameName.c_str());
         return false;
     }
-    // ��ʼ������
+    // 初始化精灵
     if (!Sprite::initWithSpriteFrameName(frameName)) {
         CCLOG("Failed to initialize sprite with frame '%s'.", frameName.c_str());
         return false;
     }
-    // ���ع�������
+    // 加载怪物配置
     MonsterConfig config = MonsterConfigManager::getMonsterConfigByName(monsterName);
     this->startPosIndex=startIndex;
     this->maxHp=this->health=config.health;
@@ -85,71 +86,71 @@ bool Monster::initWithPath(const std::string& monsterName, const std::vector<Vec
     this->pause=pause;
     CCLOG("Monster Config - Sprite Frame: %s, Health: %d, Speed: %.2f, Damage: %d, Reward: %d",
         config.spriteFrameName.c_str(), config.health, config.speed, config.damage, config.reward);
-    // ���ع������߶���
+    // 加载怪物行走动画
     auto walkFrames = cocos2d::Vector<SpriteFrame*>();
     walkFrames.pushBack(SpriteFrameCache::getInstance()->getSpriteFrameByName(monsterName + "_0.png"));
     walkFrames.pushBack(SpriteFrameCache::getInstance()->getSpriteFrameByName(monsterName + "_1.png"));
-    auto walkAnimation = Animation::createWithSpriteFrames(walkFrames, 0.5f);  // ��֡�������ٶȿ��Ե���
+    auto walkAnimation = Animation::createWithSpriteFrames(walkFrames, 0.5f);  // 帧动画播放速度可以调整
     auto walkAnimate = Animate::create(walkAnimation);
     auto repeatWalk = RepeatForever::create(walkAnimate);
-    this->runAction(repeatWalk); // �����������߶���
-    // ���ó�ʼλ��
+    this->runAction(repeatWalk); // 运行怪物行走动画
+    // 设置初始位置
     if (!path.empty()) {
-        moveAlongPath(path); // ��������·���ƶ��߼�
+        moveAlongPath(path); // 调用怪物路径移动逻辑
     }
 
     return true;
 }
-//���޵��ƶ��߼�
+//怪物的移动逻辑
 void Monster::moveAlongPath(const std::vector<Vec2>& path) {
     if (path.empty()) {
         CCLOG("Path is empty, cannot move the monster.");
         return;
     }
-    // ȷ��������·������ʼ��
+    // 确定怪物路径的起始点
     this->setPosition(path[startPosIndex]);
-    // ��¼�յ�Ԫ��
+    // 记录终点元素
     endPos = path.back();
-    // ����һ������洢���еĶ���
+    // 创建一个数组存储所有的动作
     cocos2d::Vector<cocos2d::FiniteTimeAction*> actions;
-    // ����·���㣬�����ƶ�����
+    // 遍历路径点，创建移动动作
     float distance;
     float moveTime;
     for (size_t i = startPosIndex+1; i < path.size(); ++i) {
-        // ��������֮��ľ��벢ȷ���ƶ�ʱ��
+        // 计算两点之间的距离并确定移动时间
         distance = path[i - 1].distance(path[i]);
-        moveTime = distance / speed;  // �����ٶȼ����ƶ�ʱ��
+        moveTime = distance / speed;  // 根据速度计算移动时间
 
-        // �����ƶ�����
+        // 创建移动动作
         auto moveTo = cocos2d::MoveTo::create(moveTime, path[i]);
-        //��ÿ��MoveTo�����һ���ص�������pathIndex
+        //为每个MoveTo动作添加一个回调函数来更新pathIndex
         auto updatePathIndex = cocos2d::CallFunc::create([this, i]() {
-            this->PathIndex = i; // ���¹���� pathIndex ��Ա����
+            this->PathIndex = i; // 更新怪物的 pathIndex 成员变量
             CCLOG("Monster %p pathIndex updated to %d", this, i);
             });
-        // ��ÿ���ƶ��������ӵ�����������
+        // 将每个移动动作添加到动作数组中
         actions.pushBack(moveTo);
-        actions.pushBack(updatePathIndex); // ���ƶ�����󣬸��� pathIndex
+        actions.pushBack(updatePathIndex); // 在移动动作后，更新 pathIndex
     }
-    // ��·�����ʱ�����¼�
+    // 当路径完成时的回调
     auto onPathComplete = cocos2d::CallFunc::create([this]() {
         CCLOG("Monster %p has completed its path.", this);
 
-        // �����¼�
+        // 创建事件
         cocos2d::EventCustom event("monster_path_complete");
-        // �����޶���ָ�봫�ݸ��¼�
+        // 将怪物对象指针传递给事件
         event.setUserData(this); 
 
-        // ��ȡ�¼��ַ������ַ��¼�
+        // 获取事件分发器并分发事件
         auto dispatcher = Director::getInstance()->getEventDispatcher();
         dispatcher->dispatchEvent(&event);
         });
-    actions.pushBack(onPathComplete); // ������������
+    actions.pushBack(onPathComplete); // 添加完成回调
     auto sequence = cocos2d::Sequence::create(actions);
     if (pause) {
-        auto delay = DelayTime::create(4.0f); // ����һ���ӳ�3��Ķ���
-        auto delayedSequence = Sequence::create(delay, sequence, nullptr);  // ���ӳٶ��������еĶ������н������
-        speedaction = Speed::create(delayedSequence, beishu); // ִ���µ����ж��������ӳ�3�룬��ִ��ԭ����sequence��
+        auto delay = DelayTime::create(4.0f); // 创建一个延迟4秒的动作
+        auto delayedSequence = Sequence::create(delay, sequence, nullptr);  // 将延迟动作与序列动作连接起来
+        speedaction = Speed::create(delayedSequence, beishu); // 执行新的序列动作：延迟3秒，再执行原来的sequence
     }
     else
     {
@@ -157,7 +158,13 @@ void Monster::moveAlongPath(const std::vector<Vec2>& path) {
     }
     this->runAction(speedaction);
 }
-//�ù�������
+//怪物死亡
+Monster::~Monster()
+{
+    // 释放 Boss 技能装饰器
+    CC_SAFE_DELETE(bossSkill);
+}
+
 void Monster::toDie(BaseLevelScene*my_scene)
 {
     if(isDead)
@@ -165,23 +172,23 @@ void Monster::toDie(BaseLevelScene*my_scene)
     DeadCount++;
     CCLOG("Monster %p is dying.", this);
     my_scene->updateMoney(reward);
-    // 1. ������������ع���
+    // 1. 停止怪物当前所有动作
     this->isDead = true;
-    // 2. ����һ���µ���ʱ�������ڲ�����������
+    // 2. 创建一个新的临时精灵用于播放死亡动画
     auto deathSprite = cocos2d::Sprite::create();
     if (!deathSprite) {
         CCLOG("Failed to create death sprite.");
         return;
     }
-    // 3. �����������������ӵ��� Monster ��ͬ�ĸ��ڵ���
+    // 3. 将死亡精灵添加到与 Monster 相同的父节点中
     this->getParent()->addChild(deathSprite);
-    deathSprite->setPosition(this->getPosition());  // ����������������λ���������ͬ
+    deathSprite->setPosition(this->getPosition());  // 设置死亡精灵位置与怪物相同
     deathSprite->setScale(1.5f);
-    // 4. �������������� 4 ��ͼƬ
+    // 4. 加载死亡动画的4张图片
     cocos2d::Vector<cocos2d::SpriteFrame*> frames;
     for (int i = 1; i <= 4; ++i) {
         std::string frameName = "Monsters/dead_" + std::to_string(i) + ".png";
-        auto frame = cocos2d::SpriteFrame::create(frameName, cocos2d::Rect(0, 0, 64, 64)); // ����ÿ��ͼƬ�Ĵ�С�� 64x64
+        auto frame = cocos2d::SpriteFrame::create(frameName, cocos2d::Rect(0, 0, 64, 64)); // 假设每张图片的大小是 64x64
         if (frame) {
             frames.pushBack(frame);
         }
@@ -189,152 +196,67 @@ void Monster::toDie(BaseLevelScene*my_scene)
             CCLOG("Failed to load frame: %s", frameName.c_str());
         }
     }
-    // 5. ���û�м��ص�����֡��ֱ�ӷ���
+    // 5. 如果没有加载到任何帧，直接返回
     if (frames.empty()) {
         CCLOG("No frames found for death animation, skipping.");
         return;
     }
-    // 6. ����������ÿ֡���� 0.2 ��
+    // 6. 创建动画，每帧持续 0.2 秒
     auto animation = cocos2d::Animation::createWithSpriteFrames(frames, 0.2f);
     auto animate = cocos2d::Animate::create(animation);
-    // 7. ������ɺ�ɾ����ʱ��������������
+    // 7. 动画完成后删除临时精灵和死亡精灵
     auto onDeathComplete = cocos2d::CallFunc::create([deathSprite]() {
         CCLOG("Death animation completed, removing death sprite.");
         deathSprite->removeFromParent();
         });
-    // 8. ������������������������������ʱ����
+    // 8. 运行死亡动画序列，完成后删除临时精灵
     deathSprite->runAction(cocos2d::Sequence::create(animate, onDeathComplete, nullptr));
     Music::getInstance()->normalSound();
-    // 9. ɾ�����ﱾ��
+    // 9. 删除怪物本身
     this->retain();
     my_scene->removeChild(this);
-    if (my_scene->tar_m == this) {//���������ֱ���������ô�����������������
+    if (my_scene->tar_m == this) {//如果当前怪物是目标怪物，那么清空目标怪物
         my_scene->isTarget = 0;
         my_scene->tar_m = nullptr;
     }
 }
-//����Ѫ���ɼ�
+//设置血条可见
 void Monster::setHpVisible(bool isVisible) 
 { 
     _HP->setVisible(isVisible); 
      hpback->setVisible(isVisible); 
      ishpvs = true; 
 }
-//����Ѫ��
+//更新血条
 void  Monster::updateHealthBar() {
     float percentage = (static_cast<float>(health) / maxHp) * 100;
     if (percentage < 0) percentage = 0;
     if (percentage > 100) percentage = 100;
-    _HP->setPercent(percentage); // ����Ѫ���ٷֱ�
+    _HP->setPercent(percentage); // 更新血条百分比
 }
-//��������
+//受到伤害
 void  Monster::getHurt(int value)
 {
     health-=value;
 	setHpVisible(true);
 	updateHealthBar();
 }
-void showBossSkill(const std::string& skillText);
-//BossYellow�ļ���:��������
-void BossYellow::SpecialAttack() {
-    //boss���ܣ������Ĺ��ټ���
-    CCLOG("BossYellow's Attack!");
-    showBossSkill("SpecialAttack:Slow Speed!");
-            Music::getInstance()->duanSound();
-            tower_jiasu = 0.3;
-            auto delayaction = Sequence::create(DelayTime::create(20.0f), CallFunc::create([=] {
-                tower_jiasu = 1;
-                }), nullptr);
-            this->runAction(delayaction);
-    }
-
-#define CELL_SIZE 64
-void BossSheep::SpecialAttack()
+// 默认的怪物特殊攻击：由装饰器执行
+void Monster::SpecialAttack()
 {
-    //boss���ܣ������һ������
-    CCLOG("BossSheep's Attack!");
-    showBossSkill("SpecialAttack:Destroy!");
-            Music::getInstance()->duanSound();
-            auto bong = Sprite::create();
-            if (!bong) {
-                CCLOG("Failed to create bong sprite.");
-                return;
-            }
-            bong->setPosition(480, 320);
-            bong->setScale(2);
-            this->addChild(bong);
-            cocos2d::Vector<cocos2d::SpriteFrame*> frames;
-            for (int i = 0; i <= 3; ++i) {
-                std::string frameName = "Carrot/bong/bong_" + std::to_string(i) + ".png";
-                auto frame = cocos2d::SpriteFrame::create(frameName, cocos2d::Rect(0, 0, 164, 160)); // ����ÿ��ͼƬ�Ĵ�С�� 64x64
-                if (frame) {
-                    frames.pushBack(frame);
-                }
-                else {
-                    CCLOG("Failed to load frame: %s", frameName.c_str());
-                }
-            }
-            if (frames.empty()) {
-                CCLOG("No frames found for bong, skipping.");
-                return;
-            }
-            auto animation = cocos2d::Animation::createWithSpriteFrames(frames, 0.2f);
-            auto animate = cocos2d::Animate::create(animation);
-            auto onbong = cocos2d::CallFunc::create([bong]() {
-                CCLOG("bong.");
-                bong->removeFromParent();
-                });
-            Music::getInstance()->bongSound();
-            bong->runAction(cocos2d::Sequence::create(animate, onbong, nullptr));
-            int num = 0;
-            for (auto it = manager->getScene()->towers.begin(); it != manager->getScene()->towers.end();) {
-                if (num % 2 == 0) {
-                    manager->getScene()->removeChild(it->second->sprite_mark);
-                    manager->getScene()->removeChild(it->second->sp_base);
-                    it->second->sprite_mark->release();
-                    it->second->sp_base->release();
-                    auto tool = ++it;
-                    it--;
-                    manager->getScene()->map_data[int(it->second->pos.x / CELL_SIZE)][int(it->second->pos.y / CELL_SIZE)].flag=0;
-                    manager->getScene()->towers.erase(it);
-                    it = tool;
-                }
-                else
-                    it++;
-                num++;
-            }
+    if (bossSkill)
+    {
+        bossSkill->use(this);
+    }
 }
 
-//������ʾBoss����
-void showBossSkill(const std::string& skillText) {
-    // ����һ�� Label ����ʾ��������
-    auto skillLabel = Label::createWithTTF(skillText, "fonts/Marker Felt.ttf", 48); // ʹ�� TTF ����
-    if (!skillLabel) return;
+// BossYellow / BossSheep 仅作为 Monster 的具体类型，由装饰器完成真正逻辑
+void BossYellow::SpecialAttack()
+{
+    Monster::SpecialAttack();
+}
 
-    // ���� Label λ��Ϊ��Ļ����
-    skillLabel->setPosition(Director::getInstance()->getVisibleSize() / 2);
-    skillLabel->setTextColor(Color4B::RED); // ����������ɫΪ��ɫ
-
-    // ���� Label ����ǰ��
-    manager->getScene()->addChild(skillLabel, 100); // ���ýϸߵ� z-order ȷ����ʾ����ǰ��
-
-    // ���붯��
-    auto fadeIn = FadeIn::create(0.5f);
-
-    // ͣ��ʱ��
-    auto delay = DelayTime::create(2.0f);
-
-    // ��������
-    auto fadeOut = FadeOut::create(0.5f);
-
-    // ������ɺ��Ƴ� Label
-    auto remove = CallFunc::create([=]() {
-        manager->getScene()->removeChild(skillLabel);
-        });
-
-    // ��϶���
-    auto sequence = Sequence::create(fadeIn, delay, fadeOut, remove, nullptr);
-
-    // ���ж���
-    skillLabel->runAction(sequence);
+void BossSheep::SpecialAttack()
+{
+    Monster::SpecialAttack();
 }
