@@ -1,6 +1,7 @@
 #include "MonsterFactory.h"
 #include "config/MonsterConfigs.h"
 #include "ui/CocosGUI.h"
+#include "SkillDecorator.h"
 
 // NormalMonsterFactory实现
 Monster* NormalMonsterFactory::createMonster(const std::string& monsterName, 
@@ -48,6 +49,12 @@ Monster* BossMonsterFactory::createMonster(const std::string& monsterName,
     
     // 使用工厂类的初始化方法初始化Boss
     if (Monster::initializeMonsterWithHealthBar(monster, monsterName, path, startIndex, pause)) {
+        // 为不同 Boss 绑定对应的技能装饰器
+        if (monsterName == "BossYellow") {
+            monster->setBossSkill(new (std::nothrow) SlowDownTowerSkill());
+        } else if (monsterName == "BossSheep") {
+            monster->setBossSkill(new (std::nothrow) DestroyTowerSkill());
+        }
         CCLOG("Boss monster created: %s", monsterName.c_str());
         return monster;
     }

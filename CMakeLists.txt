@@ -29,6 +29,10 @@ set(APP_NAME CarrotFantasy)
 
 project(${APP_NAME})
 
+if (MSVC)
+    add_compile_options(/utf-8)
+endif()
+
 if(XCODE)
     if(NOT DEFINED CMAKE_XCODE_ATTRIBUTE_IPHONEOS_DEPLOYMENT_TARGET)
         SET (CMAKE_XCODE_ATTRIBUTE_IPHONEOS_DEPLOYMENT_TARGET 8.0)
@@ -97,6 +101,7 @@ list(APPEND GAME_SOURCE
      Classes/core/state/GameFlowController.cpp
      Classes/core/state/GameFlowProvider.cpp
      Classes/entities/Monster/MonsterFactory.cpp
+     Classes/entities/Monster/SkillDecorator.cpp
      )
 
 list(APPEND GAME_HEADER
@@ -145,6 +150,7 @@ list(APPEND GAME_HEADER
      Classes/core/state/GameFlowProvider.h
      Classes/gameplay/events/CarrotEvents.h
      Classes/entities/Monster/MonsterFactory.h
+     Classes/entities/Monster/SkillDecorator.h
      )
 
 if(ANDROID)
