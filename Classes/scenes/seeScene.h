@@ -1,21 +1,24 @@
 #pragma once
 #ifndef __SEE_MENU_H__
 #define __SEE_MENU_H__
-#include "cocos2d.h"
-USING_NS_CC;
-class seescene : public Layer  //ÀàËÆhellowordScene
-{
+
+#include "BaseNavigableScene.h"
+
+class seescene : public BaseNavigableScene {
 public:
-	static Scene* createScene() {
-		auto scene = Scene::create();
-		auto layer = seescene::create();
-		scene->addChild(layer);
-		return scene;
-	};
-	virtual bool init();
-	void to_menuScene(Ref* pSender);
-	// a selector callback
-	CREATE_FUNC(seescene);
+    static Scene* createScene() {
+        auto scene = Scene::create();
+        auto layer = seescene::create();
+        scene->addChild(layer);
+        return scene;
+    };
+    CREATE_FUNC(seescene);
+
+protected:
+    // å®ç°åŸºç±»æ¥å£
+    virtual std::string getBackgroundImagePath() override {
+        return "see.png"; 
+    }
 };
 
 #endif // __SEE_MENU_H__
