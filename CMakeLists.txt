@@ -151,6 +151,7 @@ list(APPEND GAME_HEADER
      Classes/gameplay/events/CarrotEvents.h
      Classes/entities/Monster/MonsterFactory.h
      Classes/entities/Monster/SkillDecorator.h
+     Classes/scenes/BaseNavigableScene.h
      )
 
 if(ANDROID)
