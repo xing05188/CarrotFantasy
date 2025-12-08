@@ -17,6 +17,9 @@
 
 USING_NS_CC;
 
+//对象池，子弹对象池应放在场景类中，因为每个子弹对象池对应该场景的所有子弹
+#include "entities/Tower/Projectile.h"
+
 
 // 前向声明
 class SkillController;
@@ -151,5 +154,11 @@ public:
     void registerCarrotShakeListeners();
     void registerMonsterSpawnListeners();
    
+    //对象池
+    ObjectPool<BottleProjectile>* bottleProjectilePool;
+    ObjectPool<SunProjectile>* sunProjectilePool;
+    ObjectPool<PlaneProjectile>* planeProjectilePool;
+    ObjectPool<ShitProjectile>* shitProjectilePool;
+    ObjectPool<FanProjectile>* fanProjectilePool;
 };
 #endif

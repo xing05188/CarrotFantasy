@@ -23,6 +23,8 @@ class Fan;
 class MagicTower;
 class BaseLevelScene;
 
+template<typename T> class ObjectPool;
+
 // 辅助函数声明
 // 检测两个精灵是否碰撞
 bool isColliding(Sprite* spriteA, Sprite* spriteB);
@@ -43,7 +45,7 @@ public:
 // 瓶子攻击策略 - 具体策略类，实现瓶子塔的攻击行为
 class BottleAttackStrategy : public AttackStrategy {
 private:
-    static const float speed;  // 炮弹飞行速度
+    //static const float speed;  // 炮弹飞行速度
     
 public:
     // 实现基类的纯虚函数，定义瓶子塔的攻击逻辑
@@ -54,13 +56,6 @@ private:
     // 模板函数，处理瓶子塔对目标的攻击
     template<class T>
     bool AttackSprite(Bottle* bottle, T* sp, BaseLevelScene* my_scene, float jiasu);
-    
-    // 创建炮弹精灵
-    void ShellProduct(Bottle* bottle, Scene* my_scene);
-    
-    // 模板函数，处理炮弹对目标的伤害
-    template<class T>
-    void ShellDemage(Bottle* bottle, BaseLevelScene* my_scene, T* sp);
 };
 
 // 太阳攻击策略 - 具体策略类，实现太阳塔的攻击行为
@@ -87,14 +82,12 @@ private:
     template<class T>
     bool AttackSprite(MyPlane* plane, T* sp, BaseLevelScene* my_scene, std::vector<Monster*>& monsters, float jiasu);
     
-    // 飞机塔的伤害处理，穿透攻击
-    void PlaneDemage(MyPlane* plane, BaseLevelScene* my_scene, std::vector<Monster*>& monsters);
 };
 
 // 大便攻击策略 - 具体策略类，实现粪便塔的攻击行为
 class ShitAttackStrategy : public AttackStrategy {
 private:
-    static const float speed;  // 粪便飞行速度
+    //static const float speed;  // 粪便飞行速度
     
 public:
     // 实现基类的纯虚函数，定义粪便塔的攻击逻辑
@@ -106,13 +99,15 @@ private:
     template<class T>
     bool AttackSprite(Shit* shit, T* sp, BaseLevelScene* my_scene, float jiasu);
     
-    // 创建粪便精灵
-    void ShellProduct(Shit* shit, Scene* my_scene);
-    
-    // 模板函数，处理粪便对目标的伤害
-    template<class T>
-    void ShellDemage(Shit* shit, BaseLevelScene* my_scene, T* sp);
 };
+
+
+
+
+
+
+
+
 
 // 风扇攻击策略 - 具体策略类，实现风扇塔的攻击行为
 class FanAttackStrategy : public AttackStrategy {
