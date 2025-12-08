@@ -675,6 +675,25 @@ bool BaseLevelScene::initWithLevel(int level)
     countDownCallbacks.removeChild = [this](Node* node) { this->removeChild(node); };
     countDownCallbacks.runActionOnScene = [this](Action* action) { this->runAction(action); };
     countDownController_->init(countDownCallbacks);
+
+
+    //初始化对象池
+    bottleProjectilePool = new ObjectPool<BottleProjectile>(5, 100, []() {
+            return std::make_unique<BottleProjectile>();
+        });
+    sunProjectilePool = new ObjectPool<SunProjectile>(5, 100, []() {
+            return std::make_unique<SunProjectile>();
+        });
+    planeProjectilePool = new ObjectPool<PlaneProjectile>(5, 100, []() {
+            return std::make_unique<PlaneProjectile>();
+        });
+    shitProjectilePool = new ObjectPool<ShitProjectile>(5, 100, []() {
+            return std::make_unique<ShitProjectile>();
+        });
+    fanProjectilePool = new ObjectPool<FanProjectile>(5, 500, []() {
+            return std::make_unique<FanProjectile>();
+        });
+
     
     initUI();
     // ✅ 监听器已在initLevel之前注册（第617-621行），这里不再重复注册

@@ -90,6 +90,7 @@ list(APPEND GAME_SOURCE
      Classes/entities/Tower/Tower.cpp
      Classes/entities/Tower/TowerFactory.cpp
      Classes/entities/Tower/AttackStrategy.cpp
+     Classes/entities/Tower/Projectile.cpp
      Classes/ui/widgets/MoneyHud.cpp
      Classes/core/state/GameState.cpp
      Classes/core/state/PausedState.cpp
@@ -137,6 +138,7 @@ list(APPEND GAME_HEADER
      Classes/entities/Tower/Tower.h
      Classes/entities/Tower/TowerFactory.h
      Classes/entities/Tower/AttackStrategy.h
+     Classes/entities/Tower/Projectile.h
      Classes/ui/widgets/MoneyHud.h
      Classes/core/state/GameState.h
      Classes/core/state/PausedState.h
