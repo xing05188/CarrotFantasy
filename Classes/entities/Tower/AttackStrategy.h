@@ -1,3 +1,36 @@
+/**
+ * Refactored with Strategy Pattern
+ * 使用策略模式重构
+ * 
+ * Design Pattern: Strategy Pattern
+ * 设计模式：策略模式
+ * 
+ * Benefits:
+ * 1. Allows different attack behaviors to be selected at runtime
+ * 2. Encapsulates attack algorithms in separate classes, making them interchangeable
+ * 3. Eliminates conditional statements for different attack types
+ * 4. Makes it easy to add new attack strategies without modifying existing code
+ * 
+ * 好处：
+ * 1. 允许在运行时选择不同的攻击行为
+ * 2. 将攻击算法封装在单独的类中，使它们可以互换
+ * 3. 消除了针对不同攻击类型的条件语句
+ * 4. 无需修改现有代码即可轻松添加新的攻击策略
+ * 
+ * Problems Solved:
+ * 1. Avoids code duplication when implementing similar attack behaviors
+ * 2. Provides a clean way to switch between different attack algorithms
+ * 3. Makes the code more maintainable by separating attack logic from the tower class
+ * 4. Enables towers to change their attack behavior dynamically during gameplay
+ * 
+ * 解决的问题：
+ * 1. 避免在实现类似攻击行为时的代码重复
+ * 2. 提供了一种在不同攻击算法之间切换的清晰方式
+ * 3. 通过将攻击逻辑与塔类分离，使代码更易于维护
+ * 4. 使塔能够在游戏过程中动态改变其攻击行为
+ */
+ // Refactored with Strategy Pattern
+ // 使用策略模式重构
 #pragma once
 #include "cocos2d.h"
 #include "entities/Monster/Monster.h"

@@ -1,3 +1,5 @@
+// Refactored with State Pattern
+// 使用状态模式重构
 #include "PausedState.h"
 
 #include "cocos2d.h"

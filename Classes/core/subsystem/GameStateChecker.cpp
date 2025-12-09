@@ -1,3 +1,5 @@
+// Refactored with Manager Pattern
+// 使用管理者模式重构
 #include "GameStateChecker.h"
 
 #include "cocos2d.h"

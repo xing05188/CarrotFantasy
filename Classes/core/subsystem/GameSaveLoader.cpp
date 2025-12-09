@@ -1,3 +1,5 @@
+// Refactored with Manager Pattern
+// 使用管理者模式重构
 #include "GameSaveLoader.h"
 
 #include <fstream>

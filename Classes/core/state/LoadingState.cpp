@@ -1,3 +1,5 @@
+// Refactored with State Pattern
+// 使用状态模式重构
 #include "LoadingState.h"
 
 #include "BaseLevelScene.h"

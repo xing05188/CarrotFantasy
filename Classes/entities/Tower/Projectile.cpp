@@ -1,3 +1,34 @@
+/**
+ * Refactored with Object Pool Pattern
+ * 使用对象池模式重构
+ * 
+ * Design Pattern: Object Pool Pattern
+ * 设计模式：对象池模式
+ * 
+ * Benefits:
+ * 1. Efficiently manages reusable projectile objects
+ * 2. Reduces overhead from frequent creation/destruction of projectiles
+ * 3. Centralizes projectile lifecycle management
+ * 4. Improves game performance by minimizing memory operations
+ * 
+ * 好处：
+ * 1. 高效管理可重用的投射物对象
+ * 2. 减少频繁创建/销毁投射物的开销
+ * 3. 集中化投射物生命周期管理
+ * 4. 通过最小化内存操作提高游戏性能
+ * 
+ * Problems Solved:
+ * 1. Prevents performance issues from excessive memory allocation during gameplay
+ * 2. Ensures consistent projectile behavior and management
+ * 3. Reduces memory fragmentation from short-lived projectile objects
+ * 4. Provides a scalable solution for managing multiple projectile types
+ * 
+ * 解决的问题：
+ * 1. 防止游戏过程中过多内存分配导致的性能问题
+ * 2. 确保一致的投射物行为和管理
+ * 3. 减少短生命周期投射物对象造成的内存碎片
+ * 4. 为管理多种投射物类型提供可扩展的解决方案
+ */
 #include "Projectile.h"
 #include "Tower.h"
 #include "BaseLevelScene.h"
