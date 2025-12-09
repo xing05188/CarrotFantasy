@@ -1,3 +1,36 @@
+/**
+ * Refactored with Decorator Pattern
+ * 使用装饰器模式重构
+ * 
+ * Design Pattern: Decorator Pattern
+ * 设计模式：装饰器模式
+ * 
+ * Benefits:
+ * 1. Allows adding new abilities to monsters without modifying their core classes
+ * 2. Provides a flexible alternative to subclassing for extending functionality
+ * 3. Enables combining multiple skills dynamically at runtime
+ * 4. Maintains the original monster interface while adding new behaviors
+ * 
+ * 好处：
+ * 1. 允许在不修改怪物核心类的情况下添加新能力
+ * 2. 提供了扩展功能的灵活替代方案，避免了子类化
+ * 3. 支持在运行时动态组合多个技能
+ * 4. 在添加新行为的同时保持原始怪物接口
+ * 
+ * Problems Solved:
+ * 1. Avoids class explosion when trying to create monsters with different skill combinations
+ * 2. Allows skills to be added or removed from monsters during gameplay
+ * 3. Separates skill logic from the core monster implementation
+ * 4. Makes it easier to maintain and test individual skills in isolation
+ * 
+ * 解决的问题：
+ * 1. 避免在尝试创建具有不同技能组合的怪物时出现类爆炸
+ * 2. 允许在游戏过程中为怪物添加或移除技能
+ * 3. 将技能逻辑与核心怪物实现分离
+ * 4. 使单独维护和测试各个技能变得更加容易
+ */
+ // Refactored with Decorator Pattern
+ // 使用装饰器模式重构
 #include "SkillDecorator.h"
 #include "Monster.h"
 #include "music.h"

@@ -1,3 +1,33 @@
+/**
+ * Design Pattern: Singleton Pattern
+ * 设计模式：单例模式
+ * 
+ * Benefits:
+ * 好处：
+ * - Ensures only one instance of the audio manager exists throughout the game lifecycle
+ *   确保整个游戏生命周期中只存在一个音频管理器实例
+ * - Provides global access point to the audio management functionality
+ *   提供音频管理功能的全局访问点
+ * - Controls concurrent access to shared audio resources
+ *   控制对共享音频资源的并发访问
+ * - Manages audio state consistently across different game scenes
+ *   在不同游戏场景中一致地管理音频状态
+ * - Reduces memory overhead by preventing multiple audio manager instances
+ *   通过防止多个音频管理器实例来减少内存开销
+ * 
+ * Problems Solved:
+ * 解决的问题：
+ * - Prevents multiple audio instances from causing conflicts and resource waste
+ *   防止多个音频实例导致冲突和资源浪费
+ * - Eliminates issues with audio state synchronization across different components
+ *   消除不同组件间音频状态同步的问题
+ * - Provides a centralized control point for all audio operations in the game
+ *   为游戏中所有音频操作提供集中控制点
+ * - Ensures proper resource cleanup when the game exits
+ *   确保游戏退出时正确清理资源
+ * - Maintains consistent audio settings (volume, enabled/disabled) across the entire application
+ *   在整个应用程序中保持一致的音频设置（音量、启用/禁用）
+ */
 #include "music.h"
 
 Music* Music::instance = nullptr;

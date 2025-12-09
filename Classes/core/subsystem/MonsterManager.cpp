@@ -1,3 +1,36 @@
+/**
+ * Refactored with Manager Pattern
+ * 使用管理者模式重构
+ * 
+ * Design Pattern: Manager Pattern
+ * 设计模式：管理者模式
+ * 
+ * Benefits:
+ * 1. Centralizes the management of monster entities in the game
+ * 2. Provides a single point of control for monster lifecycle and behavior
+ * 3. Encapsulates complex monster coordination logic
+ * 4. Simplifies monster-related operations by providing a unified interface
+ * 
+ * 好处：
+ * 1. 集中管理游戏中的怪物实体
+ * 2. 为怪物生命周期和行为提供单一控制点
+ * 3. 封装复杂的怪物协调逻辑
+ * 4. 通过提供统一接口简化怪物相关操作
+ * 
+ * Problems Solved:
+ * 1. Eliminates scattered monster management logic across multiple components
+ * 2. Reduces coupling between monster-related systems by centralizing their coordination
+ * 3. Provides a consistent way to manage monster state transitions
+ * 4. Makes it easier to implement monster-specific features like spawning and pathfinding
+ * 
+ * 解决的问题：
+ * 1. 消除了分散在多个组件中的怪物管理逻辑
+ * 2. 通过集中协调减少怪物相关系统之间的耦合
+ * 3. 提供了一种管理怪物状态转换的一致方法
+ * 4. 使实现怪物特定功能如生成和寻路变得更容易
+ */
+ // Refactored with Manager Pattern
+ // 使用管理者模式重构
 #include "MonsterManager.h"
 
 #include "Music.h"
