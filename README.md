@@ -36,6 +36,7 @@ This project successfully applies the following design patterns to meet assignme
 - **Modular Design**: Subsystems can be developed and tested independently
 
 ## Project Structure
+```
 CarrotFantasy/
 ├── Classes/
 │   ├── core/           # Core game systems (GameManager, EventBus, State management)
@@ -47,6 +48,7 @@ CarrotFantasy/
 │   └── config/         # Game configuration files
 ├── Resources/          # Game assets (sprites, maps, music, etc.)
 └── cocos2d/           # Cocos2d-x engine
+```
 ## Building
 The project uses **CMake** for building. Refer to the `CMakeLists.txt` file for build configuration.
 
