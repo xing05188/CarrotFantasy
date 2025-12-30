@@ -1,6 +1,6 @@
 # CarrotFantasy
 
-A refactored tower defense game built with **Cocos2d-x**, inspired by "Protect the Carrot" (保卫萝卜).
+A refactored tower defense game built with **Cocos2d-x**, inspired by "CarrotFantasy" (保卫萝卜).
 
 ## About
 This project is a comprehensive refactoring of the [CattotFantasy](https://github.com/xing05188/CattotFantasy) game. The original project has been restructured with modern software design patterns to improve code maintainability, extensibility, and overall architecture quality.
