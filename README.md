@@ -3,7 +3,7 @@
 A refactored tower defense game built with **Cocos2d-x**, inspired by "Protect the Carrot" (保卫萝卜).
 
 ## About
-This project is a comprehensive refactoring of the CattotFantasy game. The original project has been restructured with modern software design patterns to improve code maintainability, extensibility, and overall architecture quality.
+This project is a comprehensive refactoring of the [CattotFantasy](https://github.com/xing05188/CattotFantasy) game. The original project has been restructured with modern software design patterns to improve code maintainability, extensibility, and overall architecture quality.
 
 ## Refactoring Highlights
 The following table summarizes the main refactoring tasks, their corresponding design patterns, and application modules/components:
@@ -68,4 +68,4 @@ The project uses **CMake** for building. Refer to the `CMakeLists.txt` file for 
 - Event-driven game architecture
 
 ## Related Project
-This project is a refactoring of **CattotFantasy**.
+This project is a refactoring of [CattotFantasy](https://github.com/xing05188/CattotFantasy).
